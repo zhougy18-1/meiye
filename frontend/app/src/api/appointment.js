@@ -18,11 +18,21 @@ export const getAppointments = (params) => {
   });
 };
 
+// createAppointment 透传完整 data（含 customerType / sourceChannel / bedId 三个可空字段）。
 export const createAppointment = (data) => {
   return request({
     url: '/appointments',
     method: 'post',
     data,
+  });
+};
+
+// P0 缺口补齐 EP-11：按「床位 × 时段」查询某日剩余可约（date 为空时后端用门店今天）。
+export const getAppointmentCapacity = (date) => {
+  return request({
+    url: '/appointments/capacity',
+    method: 'get',
+    params: date ? { date } : {},
   });
 };
 

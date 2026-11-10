@@ -143,7 +143,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { getMembers } from '@/api/member.js';
 import { Plus, Edit, Search, CreditCard } from '@element-plus/icons-vue'; 
 import MemberForm from '@/components/MemberForm.vue';
@@ -151,7 +151,7 @@ import MemberDetailDrawer from '@/components/member/MemberDetailDrawer.vue';
 // 优化点5: 引入通用格式化函数
 import { memberStatusText, memberStatusTagType } from '@/utils/formatters.js';
 // 优化点4: 引入统一时区处理函数
-import { formatInAppTimeZone, formatShortDateInAppTimeZone, formatFullDateTimeInAppTimeZone } from '@/utils/date.js';
+import { formatShortDateInAppTimeZone, formatFullDateTimeInAppTimeZone } from '@/utils/date.js';
 // 引入货币格式化函数
 import { formatCurrency } from '@/utils/currency.js';
 // 性能优化工具
@@ -192,7 +192,7 @@ const fetchMembers = async (reset = true) => {
     
     total.value = res.total;
     hasMore.value = members.value.length < res.total;
-  } catch(error) {
+  } catch {
     // Error fetching members - handled silently
     if (reset) {
       members.value = [];

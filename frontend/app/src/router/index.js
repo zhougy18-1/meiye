@@ -36,6 +36,17 @@ const routes = [
     component: () => import('../views/AppointmentView.vue') 
   },
   {
+    path: '/packages',
+    name: 'packages',
+    component: () => import('../views/PackageView.vue')
+  },
+  {
+    path: '/sms-notifications',
+    name: 'sms-notifications',
+    component: () => import('../views/SmsNotificationView.vue'),
+    meta: { roles: ['ADMIN', 'MANAGER'] }
+  },
+  {
     path: '/reports',
     name: 'reports',
     component: () => import('../views/ReportView.vue'),

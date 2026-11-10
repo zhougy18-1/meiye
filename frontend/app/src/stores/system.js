@@ -15,7 +15,7 @@ export const useSystemStore = defineStore('system', {
       try {
         const { count } = await getTodayAppointmentCount();
         this.todayAppointmentCount = count;
-      } catch (error) {
+      } catch {
         // Error fetching appointment count - handled silently
         this.todayAppointmentCount = 0;
       }
@@ -27,7 +27,7 @@ export const useSystemStore = defineStore('system', {
         // getBirthdayReminders 返回的是一个数组
         const reminders = await getBirthdayReminders();
         this.upcomingBirthdayCount = reminders.length;
-      } catch (error) {
+      } catch {
         // Error fetching birthday count - handled silently
         this.upcomingBirthdayCount = 0;
       }

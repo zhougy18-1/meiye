@@ -12,11 +12,13 @@ publicApi.interceptors.response.use(
   (error) => Promise.reject(error)
 );
 
-export const getBookingOptions = (code) => {
+// P0 缺口补齐 EP-13：可选 date 用于返回该日「床位 × 时段」可约容量。
+// 不向顾客询问新老客 / 来源渠道 / 床位，三字段留空由店长在店务端补录。
+export const getBookingOptions = (code, date) => {
   return publicApi({
     url: '/options',
     method: 'get',
-    params: { code }
+    params: { code, ...(date ? { date } : {}) }
   });
 };
 

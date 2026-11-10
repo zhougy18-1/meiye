@@ -26,7 +26,10 @@ import configRoutes from './routes/configs.js';
 import cardRoutes from './routes/cards.js';
 import voidLogRoutes from './routes/voidLogs.js';
 import bookingRoutes from './routes/booking.js';
+import packagesRoutes from './routes/packages.js';
+import smsNotificationRoutes from './routes/smsNotifications.js';
 import tokenCleaner from './utils/tokenCleaner.js';
+import smsDispatcher from './utils/smsDispatcher.js';
 import prisma from './db/prisma.js';
 
 // Fastify 5.12 起数字跳数一律按不信任处理（校验不了直连的对端），填数字等于没开：
@@ -209,6 +212,17 @@ const managerAndAdminAccess = { onRequest: [fastify.authenticate, fastify.hasRol
 const adminOnlyAccess = { onRequest: [fastify.authenticate, fastify.hasRole('ADMIN')] };
 
 // --- 路由注册 (最终版RBAC权限) ---
+// 部署探活只返回最小状态，不暴露数据库、版本或密钥信息。
+fastify.get('/api/health', async (request, reply) => {
+  try {
+    await prisma.$queryRawUnsafe('SELECT 1');
+    return { status: 'ok' };
+  } catch (error) {
+    request.log.error({ err: error }, 'health check failed');
+    return reply.code(503).send({ status: 'unavailable' });
+  }
+});
+
 // 认证路由 - 防暴力破解限流在 auth.js 内 per-route 配置
 // （register 选项里的 config.rateLimit 不会下沉到 plugin 内的路由，必须挂在每个路由上）
 fastify.register(authRoutes, { prefix: '/api/auth' });
@@ -236,6 +250,12 @@ fastify.register(voidLogRoutes, { prefix: '/api/void-logs' });
 
 // 公开预约路由 - 无需认证，通过访问码验证
 fastify.register(bookingRoutes, { prefix: '/api/public/booking' });
+
+// 次卡/套餐独立台账。路由内部执行鉴权，购买收入不会重复写入原收银流水。
+fastify.register(packagesRoutes, { prefix: '/api/packages' });
+
+// 短信发送台账和失败重试，仅店长/管理员可查看。
+fastify.register(smsNotificationRoutes, { prefix: '/api/sms-notifications' });
 
 // 启动服务
 const start = async () => {
@@ -267,6 +287,8 @@ const start = async () => {
     // 启动token清理器
     tokenCleaner.start();
     console.log('✅ Token清理器启动成功');
+    smsDispatcher.start();
+    console.log('✅ 短信发送队列启动成功');
   } catch (err) {
     console.error('❌ 服务器启动失败:');
     console.error(err);
@@ -281,6 +303,7 @@ start();
 for (const signal of ['SIGTERM', 'SIGINT']) {
   process.once(signal, async () => {
     tokenCleaner.stop();
+    smsDispatcher.stop();
     await fastify.close();
     await prisma.$disconnect();
     process.exit(0);

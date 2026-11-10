@@ -29,10 +29,24 @@ MIRROR="PRISMA_ENGINES_MIRROR=https://registry.npmmirror.com/-/binary/prisma"
 PART="${1:-all}"
 
 if [ "${PART}" != "backend" ]; then
-	echo "== 前端：镜像内构建并推送"
-	# 导出到新建的空目录：导出不清理目标目录，旧文件留着会被 rsync --delete 一起推上去
+	echo "== 前端：正式构建并推送"
+	# 导出到新建的空目录：导出不清理目标目录，旧文件留着会被 rsync --delete 一起推上去。
+	# 有 Docker 时使用隔离构建；Mac 只有 Colima/containerd 时回退到项目自带 pnpm 构建。
 	out=$(mktemp -d)
-	docker build --target files --output "${out}" frontend
+	if command -v docker >/dev/null 2>&1; then
+		docker build --target files --output "${out}" frontend
+	else
+		command -v pnpm >/dev/null 2>&1 || { echo "本机没有 docker 或 pnpm，无法构建前端" >&2; exit 1; }
+		(
+			cd frontend/app
+			VITE_DEMO_MODE=false pnpm build
+		)
+		cp -R frontend/app/dist/. "${out}/"
+	fi
+	if grep -R -q "当前全部为模拟数据" "${out}"; then
+		echo "正式构建仍包含演示横幅，已停止发布" >&2
+		exit 1
+	fi
 	rsync -av --delete --exclude '.DS_Store' --exclude '._*' \
 		"${out}/" "${SERVER}:${FRONT_DIR}/"
 	rm -rf "${out}"
@@ -60,7 +74,7 @@ fi
 
 echo "== 健康检查"
 sleep 10
-if curl -sf "${SITE_URL}/api/configs" >/dev/null; then
+if curl -sf "${SITE_URL}/api/health" >/dev/null; then
 	echo "部署完成，健康检查通过"
 else
 	echo "健康检查失败。后端回滚：" >&2

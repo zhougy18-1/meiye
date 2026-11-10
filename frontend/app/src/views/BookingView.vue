@@ -58,6 +58,8 @@
               <el-select v-model="form.appointmentHour" placeholder="选择时段" size="large" style="width: 100%">
                 <el-option v-for="slot in timeSlots" :key="slot.value" :label="slot.label" :value="slot.value" />
               </el-select>
+              <!-- P0 缺口补齐：仅显示该时段剩余可约；不向顾客询问新老客 / 渠道 / 床位。 -->
+              <div v-if="capacityHint" class="capacity-hint">{{ capacityHint }}</div>
             </el-form-item>
           </div>
 
@@ -87,7 +89,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue';
+import { ref, reactive, onMounted, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { WarningFilled, CircleCheckFilled, Loading } from '@element-plus/icons-vue';
@@ -100,7 +102,7 @@ const pageState = ref('loading');
 const submitting = ref(false);
 const bookingCode = ref('');
 
-const options = reactive({ services: [], staff: [] });
+const options = reactive({ services: [], staff: [], beds: [], capacity: null });
 
 const form = reactive({
   customerName: '',
@@ -134,6 +136,30 @@ const timeSlots = computed(() => {
   return slots;
 });
 
+const toDateParam = (value) => {
+  const d = new Date(value);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+// 日期变化时刷新该日「床位 × 时段」剩余可约；接口失败不阻断原有预约流程。
+watch(() => form.appointmentDate, async (value) => {
+  if (!value || !bookingCode.value) return;
+  try {
+    const data = await getBookingOptions(bookingCode.value, toDateParam(value));
+    options.beds = data.beds || [];
+    options.capacity = data.capacity || null;
+  } catch {
+    options.capacity = null;
+  }
+});
+
+const capacityHint = computed(() => {
+  const slots = options.capacity?.slots;
+  if (!slots || !form.appointmentHour) return '';
+  const slot = slots.find(item => item.slot === form.appointmentHour);
+  return slot ? `该时段剩余可约 ${slot.available} / ${slot.total}` : '';
+});
+
 const disabledDate = (time) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -153,6 +179,8 @@ onMounted(async () => {
     const data = await getBookingOptions(bookingCode.value);
     options.services = data.services;
     options.staff = data.staff;
+    options.beds = data.beds || [];
+    options.capacity = data.capacity || null;
     pageState.value = 'form';
   } catch {
     pageState.value = 'invalid';
@@ -273,6 +301,13 @@ const handleSubmit = async () => {
   font-weight: 500;
   color: #303133;
   font-size: 14px;
+}
+
+.capacity-hint {
+  color: #909399;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 4px;
 }
 
 .form-row {

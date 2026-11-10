@@ -211,7 +211,7 @@ export default {
 };
 
 // 开发环境调试
-if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+if (import.meta.env.DEV && typeof window !== 'undefined') {
   window.timezoneDebug = {
     getInfo: getTimezoneDebugInfo,
     forceDetect: forceTimezoneDetection,

@@ -5,6 +5,8 @@ import { generateUniqueId } from '../utils/id.js';
 import { checkRateLimit, recordRequest } from '../utils/rateLimit.js';
 import { sendNotification, formatAppointmentNotification } from '../utils/wxpush.js';
 import { bookingOptionsSchema, createBookingSchema } from '../schemas/booking.js';
+import { P0_GAP_POLICIES } from '../config/p0GapPolicies.js';
+import { computeDailyCapacity, assertNoBedConflict, BedConflictError } from '../utils/bookingCapacity.js';
 
 async function verifyBookingCode(code) {
   if (!code || code.length < 2) return false;
@@ -20,14 +22,15 @@ async function verifyBookingCode(code) {
 export default async function (fastify, opts) {
 
   // 获取预约选项（服务、员工、可用时段）
+  // P0 缺口补齐 EP-13：新增可选 date，返回 beds + capacity（床位 × 时段剩余可约）。
   fastify.get('/options', { schema: bookingOptionsSchema }, async (request, reply) => {
-    const { code } = request.query;
+    const { code, date } = request.query;
 
     if (!await verifyBookingCode(code)) {
       return reply.code(404).send({ error: '链接无效或已过期' });
     }
 
-    const [services, staff] = await Promise.all([
+    const [services, staff, capacity] = await Promise.all([
       prisma.service.findMany({
         where: { status: 'AVAILABLE' },
         select: { id: true, name: true, standardPrice: true },
@@ -37,10 +40,11 @@ export default async function (fastify, opts) {
         where: { status: 'ACTIVE' },
         select: { id: true, name: true },
         orderBy: { sortOrder: 'asc' }
-      })
+      }),
+      computeDailyCapacity(date),
     ]);
 
-    return { services, staff };
+    return { services, staff, beds: [...P0_GAP_POLICIES.BEDS], capacity };
   });
 
   // 创建预约
@@ -51,7 +55,9 @@ export default async function (fastify, opts) {
       return reply.code(404).send({ error: '链接无效或已过期' });
     }
 
-    const { customerName, customerPhone, appointmentTime, serviceIds, assignedStaffId, notes } = request.body;
+    // T-07：新字段加入白名单式解构；公开预约不向顾客询问，三字段留空由店长补录。
+    const { customerName, customerPhone, appointmentTime, serviceIds, assignedStaffId, notes,
+      customerType, sourceChannel, bedId } = request.body;
 
     // 频率限制检查 (IP + 手机号)
     const clientIp = request.ip || 'unknown';
@@ -101,6 +107,15 @@ export default async function (fastify, opts) {
       }
     }
 
+    // P0 缺口补齐：新增「同床位同时段不可重复占用」，复用既有 ±1h 窗口；
+    // 既有手机号 / 员工冲突检测零改动。
+    try {
+      await assertNoBedConflict(prisma, bedId, { start: timeRangeStart, end: timeRangeEnd });
+    } catch (error) {
+      if (error instanceof BedConflictError) return reply.code(error.statusCode).send({ error: error.message });
+      throw error;
+    }
+
     // 验证服务ID有效性
     const validServices = await prisma.service.findMany({
       where: { id: { in: serviceIds }, status: 'AVAILABLE' },
@@ -135,6 +150,10 @@ export default async function (fastify, opts) {
         status: 'PENDING',
         services: { connect: serviceIds.map(id => ({ id })) },
         ...(assignedStaffId && { staff: { connect: { id: assignedStaffId } } }),
+        // T-07：三个新字段加入 create data，全部可空（旧记录显示「未标注」）。
+        customerType: customerType || null,
+        sourceChannel: sourceChannel || null,
+        bedId: bedId || null,
       },
       include: {
         services: { select: { id: true, name: true } },

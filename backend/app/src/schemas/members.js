@@ -9,6 +9,7 @@ export const createMemberSchema = {
       phone: phoneSchema,
       gender: { type: 'string', enum: genderEnum },
       birthday: { type: ['string', 'null'], format: 'date' },
+      smsNotificationEnabled: { type: 'boolean' },
       notes: { type: ['string', 'null'], maxLength: 500 }
     },
     additionalProperties: false
@@ -24,6 +25,7 @@ export const updateMemberSchema = {
       gender: { type: 'string', enum: genderEnum },
       birthday: { type: ['string', 'null'], format: 'date' },
       status: { type: 'string', enum: memberStatusEnum },
+      smsNotificationEnabled: { type: 'boolean' },
       notes: { type: ['string', 'null'], maxLength: 500 }
     },
     additionalProperties: false

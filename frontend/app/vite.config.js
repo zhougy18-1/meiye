@@ -1,4 +1,5 @@
 import { fileURLToPath, URL } from 'node:url'
+import process from 'node:process'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
@@ -84,7 +85,7 @@ export default defineConfig({
       // 将所有以 /api 开头的请求代理到后端
       '/api': {
         // 后端在 docker-net 上的访问名，是后端 .env 的 COMPOSE_PROJECT_NAME
-        target: 'http://qingsi-backend:3000',
+        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:3000',
         changeOrigin: true, // 必须为 true，以支持跨域
         // 如果上面依然无效，可以尝试去掉 rewrite，Vite 5+ 默认行为就是正确的
         // rewrite: (path) => path.replace(/^\/api/, '') 

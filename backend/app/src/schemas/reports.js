@@ -29,6 +29,8 @@ const paginationOnly = {
 };
 
 export const businessReportSchema = { querystring: dateRangeQuery };
+// 陷阱 T-02：/business/monthly 带 response[200]，fast-json-stringify 会剥离未声明字段，
+// 因此三个并列新增字段必须在此显式声明，否则接口返回缺字段。
 export const monthlyBusinessSchema = {
   response: {
     200: {
@@ -44,7 +46,10 @@ export const monthlyBusinessSchema = {
           pendingCleared: { type: 'string' },
           totalCustomers: { type: 'integer' },
           averageOrderValue: { type: 'string' },
-          newMembers: { type: 'integer' }
+          newMembers: { type: 'integer' },
+          packageRevenue: { type: 'string' },
+          packageRefund: { type: 'string' },
+          redeemedUses: { type: 'integer' }
         }
       }
     }

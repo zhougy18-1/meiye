@@ -22,6 +22,13 @@
       <el-form-item label="生日" prop="birthday">
         <el-date-picker v-model="formData.birthday" type="date" value-format="YYYY-MM-DD" placeholder="选择生日" style="width: 100%;"/>
       </el-form-item>
+
+      <el-form-item label="消费短信">
+        <div class="sms-consent-row">
+          <el-switch v-model="formData.smsNotificationEnabled" />
+          <span>已获顾客同意，结算后发送消费金额和账户余额</span>
+        </div>
+      </el-form-item>
       
       <el-form-item v-if="isEditMode" label="账户状态" prop="status">
         <el-select 
@@ -96,7 +103,7 @@ const formRef = ref(null);
 
 const getInitialFormData = () => ({
   id: null, name: '', phone: '', gender: 'UNKNOWN',
-  birthday: null, status: 'ACTIVE', notes: ''
+  birthday: null, status: 'ACTIVE', notes: '', smsNotificationEnabled: false
 });
 
 const formData = reactive(getInitialFormData());
@@ -127,7 +134,16 @@ const emit = defineEmits(['success']);
 
 const open = (memberData = null) => {
   if (memberData) {
-    Object.assign(formData, memberData);
+    Object.assign(formData, getInitialFormData(), {
+      id: memberData.id,
+      name: memberData.name,
+      phone: memberData.phone,
+      gender: memberData.gender || 'UNKNOWN',
+      birthday: memberData.birthday,
+      status: memberData.status || 'ACTIVE',
+      notes: memberData.notes || '',
+      smsNotificationEnabled: Boolean(memberData.smsNotificationEnabled),
+    });
     // 后端返回 ISO UTC 串（生日存为 UTC 零点），截前 10 位还原纯日期；
     // 否则不动生日直接保存时，整串会被后端 schema 的 format: 'date' 拒掉
     formData.birthday = memberData.birthday ? memberData.birthday.slice(0, 10) : null;
@@ -148,9 +164,18 @@ const handleSubmit = async () => {
     if (!valid) return;
     isSubmitLoading.value = true;
     try {
+      const payload = {
+        name: formData.name,
+        phone: formData.phone,
+        gender: formData.gender,
+        birthday: formData.birthday,
+        notes: formData.notes || null,
+        smsNotificationEnabled: formData.smsNotificationEnabled,
+        ...(isEditMode.value ? { status: formData.status } : {}),
+      };
       const apiCall = isEditMode.value 
-        ? updateMember(formData.id, formData) 
-        : addMember(formData);
+        ? updateMember(formData.id, payload)
+        : addMember(payload);
       await apiCall;
       ElMessage.success(`${isEditMode.value ? '更新' : '新增'}会员成功`);
       isDialogVisible.value = false;
@@ -200,6 +225,7 @@ defineExpose({ open });
   justify-content: space-between;
   align-items: center;
 }
+.sms-consent-row { display: flex; align-items: center; gap: 10px; color: #606266; line-height: 1.5; }
 
 :global(.el-dialog) {
   @media (max-width: 767px) {

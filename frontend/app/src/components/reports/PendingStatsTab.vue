@@ -44,7 +44,7 @@
       <el-table-column label="备注" min-width="200">
         <template #default="{ row }">
           <div class="notes-list">
-            <div v-for="(payment, index) in row.payments.slice(0, 2)" :key="payment.id" class="note-item">
+            <div v-for="payment in row.payments.slice(0, 2)" :key="payment.id" class="note-item">
               <span v-if="payment.description" class="note-desc">{{ payment.description }}</span>
               <span v-else class="no-desc">-</span>
             </div>

@@ -49,6 +49,16 @@
             <div>{{ row.customerPhone }}</div>
           </template>
         </el-table-column>
+        <!-- P0 缺口补齐：新老客 / 来源渠道 / 床位，旧记录三字段为 NULL 时显示「未标注」。 -->
+        <el-table-column label="新老客" width="100">
+          <template #default="{ row }">{{ customerTypeText(row.customerType) }}</template>
+        </el-table-column>
+        <el-table-column label="来源渠道" width="120">
+          <template #default="{ row }">{{ sourceChannelText(row.sourceChannel) }}</template>
+        </el-table-column>
+        <el-table-column label="床位" width="90">
+          <template #default="{ row }">{{ bedText(row.bedId) }}</template>
+        </el-table-column>
         <el-table-column label="预约项目" prop="services">
           <template #default="{ row }">
             {{ row.services.map(s => s.name).join(', ') }}
@@ -112,6 +122,8 @@ import { Plus, ArrowDown } from '@element-plus/icons-vue';
 import AppointmentForm from '@/components/AppointmentForm.vue';
 import { appointmentStatusText, appointmentStatusTagType } from '@/utils/formatters.js';
 import { formatTimeInAppTimeZone, formatDateInAppTimeZone } from '@/utils/date.js';
+// 展示镜像：标签与「未标注」文案集中取自 constants/p0Gap.js，口径以后端为准。
+import { CUSTOMER_TYPE_LABELS, SOURCE_CHANNEL_LABELS, UNLABELLED_TEXT } from '@/constants/p0Gap.js';
 
 // --- 状态定义 ---
 const appointments = ref([]);
@@ -120,6 +132,10 @@ const formComponent = ref(null);
 const router = useRouter();
 const transactionStore = useTransactionStore();
 const systemStore = useSystemStore();
+
+const customerTypeText = value => CUSTOMER_TYPE_LABELS[value] || UNLABELLED_TEXT;
+const sourceChannelText = value => SOURCE_CHANNEL_LABELS[value] || UNLABELLED_TEXT;
+const bedText = value => value || UNLABELLED_TEXT;
 
 const filters = reactive({
   dateRange: [],

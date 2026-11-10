@@ -19,13 +19,13 @@ const industryBgMap = {
 
 export default {
   // 品牌名称（店铺名）
-  brandName: '青丝',
+  brandName: 'M.77美肤空间',
 
   // 行业类型（修改此项会自动切换对应背景图）
   industryType: '美业',
 
   // 系统名称
-  systemName: '会员管理系统',
+  systemName: '店务管理系统',
 
   // 完整标题（用于浏览器标签页）
   get fullTitle() {
@@ -33,7 +33,7 @@ export default {
   },
 
   // 登录页宣传语
-  slogan: '简单高效，管理不用愁，经营更省心',
+  slogan: '会员、预约、套餐与经营记录统一管理',
 
   // 资源文件路径（相对于 public 目录）
   logo: '/images/logo.png',

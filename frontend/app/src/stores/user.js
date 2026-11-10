@@ -23,7 +23,7 @@ function getInitialState() {
           userInfo: { id: decoded.id, username: decoded.username, role: decoded.role },
         };
       }
-    } catch (error) {
+    } catch {
       // accessToken 解析失败，清掉坏值
     }
   }
@@ -72,7 +72,7 @@ export const useUserStore = defineStore('user', {
         this.userInfo = { id: decoded.id, username: decoded.username, role: decoded.role };
         tokenManager.restart();
         return true;
-      } catch (error) {
+      } catch {
         // 续期失败（cookie 缺失/过期）：清除本地残留，由路由守卫跳转登录
         this.accessToken = null;
         this.userInfo = null;

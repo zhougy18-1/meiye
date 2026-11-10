@@ -22,7 +22,7 @@ export default async function (fastify, opts) {
 
   // 创建新会员 - JSON Schema 验证
   fastify.post('/', { schema: createMemberSchema }, async (request, reply) => {
-      const { name, phone, gender, birthday, notes } = request.body;
+      const { name, phone, gender, birthday, notes, smsNotificationEnabled = false } = request.body;
       
       // 手机号唯一性校验（除了占位符 00000000000）
       if (phone && phone !== '00000000000') {
@@ -43,6 +43,7 @@ export default async function (fastify, opts) {
           phone,
           gender,
           birthday: birthday ? new Date(birthday) : null,
+          smsNotificationEnabled,
           notes,
         },
       });
@@ -222,7 +223,7 @@ export default async function (fastify, opts) {
    // --- 新增：更新会员信息 ---
   fastify.put('/:id', { schema: updateMemberSchema }, async (request, reply) => {
     const { id } = request.params;
-    const { name, phone, gender, birthday, status, notes } = request.body;
+    const { name, phone, gender, birthday, status, notes, smsNotificationEnabled } = request.body;
 
     // 手机号唯一性校验（除了占位符 00000000000）
     if (phone && phone !== '00000000000') {
@@ -245,6 +246,7 @@ export default async function (fastify, opts) {
           gender,
           birthday: birthday ? new Date(birthday) : null,
           status,
+          smsNotificationEnabled,
           notes,
         },
       });

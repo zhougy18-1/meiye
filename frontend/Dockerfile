@@ -39,6 +39,10 @@ CMD ["sh", "-c", "rm -f .astro/dev.json && pnpm install && exec pnpm dev --host"
 
 FROM dev AS build
 
+# 可搬迁演示包会显式传入提示文字；正式构建不传，页面中不会出现演示横幅。
+ARG VITE_DEMO_MESSAGE=
+ENV VITE_DEMO_MESSAGE=${VITE_DEMO_MESSAGE}
+
 # 先只拷依赖清单，源码改了也能复用装依赖那一层。
 # pnpm 目录挂成构建缓存，和开发时的 volume 是同一个路径：store、元数据缓存、按 packageManager 下载的 pnpm 都在里面，
 # 下次构建只下载变过的包。uid、gid 必须写，不写的话缓存目录是 root 的，node 用户写不进去

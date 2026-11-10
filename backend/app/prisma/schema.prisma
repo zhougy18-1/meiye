@@ -16,9 +16,12 @@ model Member {
   registrationDate DateTime      @default(now())
   status           MemberStatus  @default(ACTIVE)
   notes            String?       @db.Text
+  smsNotificationEnabled Boolean @default(false)
   appointments     Appointment[]
   cards            Card[]
   transactions     Transaction[]
+  packageHoldings  PackageHolding[]
+  smsNotifications SmsNotification[]
 
   @@index([name])
   @@index([phone])
@@ -70,6 +73,7 @@ model Service {
   noDiscount      Boolean           @default(false)
   TransactionItem TransactionItem[]
   appointments    Appointment[]     @relation("AppointmentToService")
+  packagePlans    PackagePlan[]
 
   @@index([status])
   @@index([sortOrder])
@@ -98,6 +102,7 @@ model Transaction {
   staff            Staff?            @relation(fields: [staffId], references: [id])
   items            TransactionItem[]
   cardLinks        TransactionCardLink[]
+  smsNotification  SmsNotification?
 
   @@index([transactionTime])
   @@index([memberId])
@@ -109,6 +114,42 @@ model Transaction {
   @@index([transactionType])
   @@index([isPending])
   @@index([memberId, isPending])
+}
+
+// 消费短信发送台账。不保存完整手机号，重试时从会员资料读取当前号码。
+model SmsNotification {
+  id                String      @id @default(cuid())
+  transactionId     String      @unique
+  memberId          String?
+  phoneLast4        String      @db.VarChar(4)
+  status            String      @default("PENDING") @db.VarChar(16)
+  provider          String      @db.VarChar(32)
+  amount            Decimal     @db.Decimal(10, 2)
+  balanceAfter      Decimal     @db.Decimal(10, 2)
+  occurredAt        DateTime
+  messagePreview    String      @db.VarChar(500)
+  templateParams    Json
+  providerRequestId String?     @db.VarChar(191)
+  providerCode      String?     @db.VarChar(191)
+  errorMessage      String?     @db.VarChar(500)
+  // P0 缺口补齐：回执期字段（依赖待决 Q-09/Q-12），全部可空，旧台账零破坏。
+  // 与 providerRequestId / providerCode / errorMessage（发送期）语义分离。
+  receiptAt         DateTime?
+  terminalStatus    String?     @db.VarChar(16)
+  rejectCode        String?     @db.VarChar(191)
+  rejectReason      String?     @db.VarChar(500)
+  receiptRequestId  String?     @db.VarChar(191)
+  attemptCount      Int         @default(0)
+  lastAttemptAt     DateTime?
+  nextAttemptAt     DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  transaction       Transaction @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  member            Member?     @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
+  @@index([status, nextAttemptAt])
+  @@index([memberId, createdAt])
+  @@index([createdAt])
 }
 
 model TransactionCardLink {
@@ -166,6 +207,10 @@ model Appointment {
   status          AppointmentStatus @default(PENDING)
   notes           String?
   transactionId   String?           @unique
+  // P0 缺口补齐：预约线索三字段（依赖待决 Q-05/Q-06/Q-07），全部可空，旧记录显示「未标注」。
+  customerType    String?           @db.VarChar(16)
+  sourceChannel   String?           @db.VarChar(32)
+  bedId           String?           @db.VarChar(16)
   staff           Staff?            @relation(fields: [assignedStaffId], references: [id])
   member          Member?           @relation(fields: [memberId], references: [id])
   transaction     Transaction?      @relation(fields: [transactionId], references: [id])
@@ -178,6 +223,8 @@ model Appointment {
   @@index([customerPhone])
   @@index([appointmentTime, status])
   @@index([appointmentTime, assignedStaffId])
+  // 支撑「同床位同时段不可重复占用」查询。
+  @@index([appointmentTime, bedId])
 }
 
 model User {
@@ -295,4 +342,88 @@ enum Role {
   MANAGER
   STYLIST
   ASSISTANT
+}
+
+// M.77 演示：独立的次卡台账。收款不写入旧 Transaction，避免旧撤销逻辑破坏履约余额。
+model PackagePlan {
+  id        String           @id @default(cuid())
+  name      String
+  serviceId String
+  totalUses Int
+  price     Decimal          @db.Decimal(10, 2)
+  validDays Int?
+  active    Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  createdBy String
+  service   Service          @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  holdings  PackageHolding[]
+
+  @@index([serviceId, active])
+}
+
+model PackageHolding {
+  id            String         @id @default(cuid())
+  memberId      String
+  planId        String
+  // 保存购买时的名称和次数，后续模板变更不影响已经售出的权益。
+  planName      String
+  totalUses     Int
+  remainingUses Int
+  paidAmount    Decimal        @db.Decimal(10, 2)
+  paymentMethod PaymentMethod
+  status        String         @default("ACTIVE") @db.VarChar(16)
+  purchasedAt   DateTime       @default(now())
+  expiresAt     DateTime?
+  createdBy     String
+  createdByName String
+  requestKey    String         @unique @db.VarChar(128)
+  member        Member         @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  plan          PackagePlan    @relation(fields: [planId], references: [id], onDelete: Restrict)
+  usages        PackageUsage[]
+  // P0 缺口补齐：退款/作废审计留痕（只增关系，不删除持有记录）。
+  audits        PackageRefundAudit[]
+
+  @@index([memberId, purchasedAt])
+  @@index([planId])
+  @@index([status, expiresAt])
+}
+
+model PackageUsage {
+  id             String         @id @default(cuid())
+  holdingId      String
+  requestKey     String         @unique @db.VarChar(128)
+  usedAt         DateTime       @default(now())
+  usedBy         String
+  usedByName     String
+  note           String?        @db.VarChar(500)
+  reversedAt     DateTime?
+  reversedBy     String?
+  reversedByName String?
+  reverseReason  String?        @db.VarChar(500)
+  holding        PackageHolding @relation(fields: [holdingId], references: [id], onDelete: Restrict)
+
+  @@index([holdingId, usedAt])
+}
+
+// P0 缺口补齐：独立套餐退款/作废审计台账（依赖待决 Q-01/Q-02/Q-03/Q-04）。
+// 不写旧 Transaction、不删除 PackageHolding / PackageUsage；购买快照留在 PackageHolding 上不冗余复制。
+model PackageRefundAudit {
+  id                   String          @id @default(cuid())
+  holdingId            String
+  action               String          @db.VarChar(16)
+  refundAmount         Decimal         @db.Decimal(10, 2)
+  remainingUsesBefore  Int
+  remainingUsesAfter   Int
+  prevStatus           String          @db.VarChar(16)
+  reason               String          @db.VarChar(500)
+  approvedBy           String          @db.VarChar(191)
+  operatorId           String
+  operatorName         String
+  occurredAt           DateTime        @default(now())
+  requestKey           String          @unique @db.VarChar(128)
+  holding              PackageHolding  @relation(fields: [holdingId], references: [id], onDelete: Restrict)
+
+  @@index([holdingId, occurredAt])
+  @@index([occurredAt])
+  @@index([action])
 }

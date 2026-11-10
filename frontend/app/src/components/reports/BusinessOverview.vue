@@ -21,6 +21,26 @@
       </el-col>
     </el-row>
 
+    <!-- P0 缺口补齐：套餐口径第二行 3 个统计块，与既有四列并列，绝不并入总消费。 -->
+    <el-row
+      :gutter="20"
+      v-loading="businessReport.loading"
+      class="stats-cards package-metrics-row"
+    >
+      <el-col :span="8" :xs="12">
+        <el-statistic title="套餐实收 · 预收现金 (元)" :value="Number(businessReport.data.packageRevenue) || 0" :precision="2" />
+      </el-col>
+      <el-col :span="8" :xs="12">
+        <el-statistic title="套餐退款 (元)" :value="Number(businessReport.data.packageRefund) || 0" :precision="2" />
+      </el-col>
+      <el-col :span="8" :xs="12">
+        <el-statistic title="履约次数 (次)" :value="Number(businessReport.data.redeemedUses) || 0" />
+      </el-col>
+    </el-row>
+    <el-text class="package-metrics-note" size="small" type="info">
+      套餐实收是预收现金、单列不并入「总消费」；履约次数是实际服务次数、不按金额计收入。
+    </el-text>
+
     <div class="transaction-list-container">
       <div class="transaction-header">
         <h3 class="section-title">
@@ -251,7 +271,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, reactive, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { Search, Edit, Operation } from '@element-plus/icons-vue';
 import { useInfiniteScroll } from '@vueuse/core';
 import { getBusinessReport } from '@/api/report.js';
@@ -408,6 +428,16 @@ onUnmounted(() => {
   padding: 20px;
   background-color: #fafafa;
   border-radius: 6px;
+}
+/* P0 缺口补齐：套餐口径第二行，与第一行视觉相接；不改既有 5 个统计块。 */
+.package-metrics-row {
+  margin-top: -10px;
+  padding-top: 0;
+  border-radius: 0 0 6px 6px;
+}
+.package-metrics-note {
+  display: block;
+  margin: -2px 0 0 20px;
 }
 .transaction-list-container {
   margin-top: 30px;

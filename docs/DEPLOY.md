@@ -9,7 +9,7 @@
 
 | 步骤 | 在哪执行 |
 | --- | --- |
-| 前端 `pnpm build` | 本地 `docker build`（`frontend/Dockerfile` 的 files 段） |
+| 前端正式构建 | 本地优先用 `docker build`；没有 Docker CLI 时自动使用项目的 `pnpm build` |
 | `dist/` 推到站点目录 | rsync 本地 → 服务器 |
 | 后端打 tar 快照备份 | 服务器 |
 | 后端代码推送 | rsync 本地 → 服务器 |
@@ -24,7 +24,7 @@
 **本地：**
 
 - 能免密 ssh 到服务器（`ssh-copy-id` 配好公钥）
-- 装了 Docker，脚本用 `docker build` 构建前端，不需要开发容器在跑
+- 装了 Docker CLI，或已安装 pnpm 且 `frontend/app/node_modules` 依赖完整；脚本会自动选择可用方式
 - 有 `rsync`（macOS 自带）
 
 **服务器：**
@@ -52,7 +52,7 @@ vi scripts/deploy.env
 | `FRONT_DIR` | 前端静态文件目录，**必须跟建站时设的网站根目录一致**，否则文件推上去了访问不到 |
 | `BACK_DIR` | 后端代码目录，**必须是后端容器挂载成 `/app` 的那个宿主机目录**，否则代码推上去了容器里看不见 |
 | `BACK_CONTAINER` | 后端容器名，填 `docker ps` 里显示的，不是镜像名 |
-| `SITE_URL` | 站点地址，部署完访问 `${SITE_URL}/api/configs` 探活。这个接口不需要登录 |
+| `SITE_URL` | 站点地址，部署完访问 `${SITE_URL}/api/health` 探活。这个接口不需要登录，只返回最小健康状态 |
 
 `SITE_URL` 和 `SERVER` 分开是因为两者不一定同名：ssh 可能走内网 IP 或 config 别名，站点却是对外域名。
 

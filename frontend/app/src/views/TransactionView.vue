@@ -379,7 +379,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed, nextTick } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 import { useTransactionStore } from '@/stores/transaction';
 import { useUserStore } from '@/stores/user';
 import { getMembers } from '@/api/member.js';
@@ -930,8 +930,13 @@ const handleCheckout = async () => {
     } else {
       apiCall = createTransaction(submitData);
     }
-    await apiCall;
-    ElMessage.success('结算成功！');
+    const result = await apiCall;
+    const smsStatus = result?.smsNotification?.status;
+    if (smsStatus === 'PENDING') {
+      ElMessage.success('结算成功，消费短信已加入发送队列');
+    } else {
+      ElMessage.success('结算成功！');
+    }
     await resetForm();
     await fetchTodayTransactions();
   } catch (error) {

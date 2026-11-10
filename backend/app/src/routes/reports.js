@@ -15,6 +15,53 @@ import {
 } from '../schemas/reports.js';
 import { applyAuth } from '../utils/applyAuth.js';
 import { shopDayRange, shopMonthWindow, shopMonthKey } from '../utils/shopTime.js';
+import { P0_GAP_POLICIES } from '../config/p0GapPolicies.js';
+
+// --- P0 缺口补齐：套餐口径私有 helper（依赖待决 Q-04 / Q-08，当前采用建议默认值）---
+// 套餐实收 / 套餐退款 / 履约次数与既有四列完全隔离，绝不并入 totalRevenue；
+// /business 与 /business/monthly 共用同一组查询与聚合，避免两份口径漂移。
+const PACKAGE_TIME = P0_GAP_POLICIES.REPORT_PACKAGE_TIME;
+
+async function queryPackageMetricRows(start, end) {
+  const [holdings, refunds, usages] = await Promise.all([
+    prisma.packageHolding.findMany({
+      where: { [PACKAGE_TIME.packageRevenueField]: { gte: start, lte: end } },
+      select: { paidAmount: true, [PACKAGE_TIME.packageRevenueField]: true },
+    }),
+    prisma.packageRefundAudit.findMany({
+      where: { [PACKAGE_TIME.packageRefundField]: { gte: start, lte: end } },
+      select: { refundAmount: true, [PACKAGE_TIME.packageRefundField]: true },
+    }),
+    prisma.packageUsage.findMany({
+      where: {
+        [PACKAGE_TIME.redeemedUsesField]: { gte: start, lte: end },
+        ...(PACKAGE_TIME.redeemedUsesExcludeReversed ? { reversedAt: null } : {}),
+      },
+      select: { [PACKAGE_TIME.redeemedUsesField]: true },
+    }),
+  ]);
+  return { holdings, refunds, usages };
+}
+
+// 金额一律 Decimal 十进制定点、两位小数字符串；履约次数返回整数（不是金额）。
+function sumPackageMetrics({ holdings, refunds, usages }) {
+  const revenue = holdings.reduce((sum, row) => sum.plus(new Decimal(row.paidAmount.toString())), new Decimal(0));
+  const refund = refunds.reduce((sum, row) => sum.plus(new Decimal(row.refundAmount.toString())), new Decimal(0));
+  return {
+    packageRevenue: revenue.toFixed(2),
+    packageRefund: refund.toFixed(2),
+    redeemedUses: usages.length,
+  };
+}
+
+// 月度对比按门店本地月份（UTC+8）过滤同一批行，口径与 /business 完全一致。
+function packageRowsForMonth(rows, month) {
+  return {
+    holdings: rows.holdings.filter(row => shopMonthKey(row[PACKAGE_TIME.packageRevenueField]) === month),
+    refunds: rows.refunds.filter(row => shopMonthKey(row[PACKAGE_TIME.packageRefundField]) === month),
+    usages: rows.usages.filter(row => shopMonthKey(row[PACKAGE_TIME.redeemedUsesField]) === month),
+  };
+}
 
 export default async function (fastify, opts) {
   applyAuth(fastify, opts);
@@ -27,11 +74,15 @@ export default async function (fastify, opts) {
     }
 
     // 查询窗口内全部交易；清账记录也要取（卡耗需要统计用卡清账的扣减）
-    const transactions = await prisma.transaction.findMany({
-      where: {
-        transactionTime: { gte: start, lte: end }
-      },
-    });
+    // P0 缺口补齐：套餐口径在同一窗口独立查询，与既有四列完全隔离。
+    const [transactions, packageRows] = await Promise.all([
+      prisma.transaction.findMany({
+        where: {
+          transactionTime: { gte: start, lte: end }
+        },
+      }),
+      queryPackageMetricRows(start, end),
+    ]);
 
     // 判断是否为办卡/充值记录（历史数据已由 migration 回填类型）
     const isCardPurchase = (t) => t.transactionType === 'CARD_PURCHASE';
@@ -69,6 +120,8 @@ export default async function (fastify, opts) {
       totalRecharge: totalRecharge.toFixed(2),  // 充值金额
       totalCustomers,  // 总客数
       averageOrderValue: totalCustomers > 0 ? totalConsumption.div(totalCustomers).toFixed(2) : "0.00",  // 客单价
+      // 套餐实收 / 套餐退款 / 履约次数：并列分列，绝不并入 totalRevenue。
+      ...sumPackageMetrics(packageRows),
     };
   });
 
@@ -77,7 +130,8 @@ export default async function (fastify, opts) {
   //   卡耗 = 正常卡消费 + 用卡清账；客数按消费发生日去重，清账不算到店）
   fastify.get('/business/monthly', { schema: monthlyBusinessSchema }, async () => {
     const { months, start, end } = shopMonthWindow(12);
-    const [transactions, members] = await Promise.all([
+    // P0 缺口补齐：月度套餐口径与 /business 共用同一组 helper，按门店本地月份分桶。
+    const [transactions, members, packageRows] = await Promise.all([
       prisma.transaction.findMany({
         where: { transactionTime: { gte: start, lte: end } },
         select: { id: true, transactionTime: true, transactionType: true, actualPaidAmount: true, paymentMethod: true, memberId: true },
@@ -86,6 +140,7 @@ export default async function (fastify, opts) {
         where: { registrationDate: { gte: start, lte: end } },
         select: { registrationDate: true },
       }),
+      queryPackageMetricRows(start, end),
     ]);
 
     const makeBucket = () => ({
@@ -131,6 +186,8 @@ export default async function (fastify, opts) {
         totalCustomers: customers,
         averageOrderValue: customers > 0 ? b.revenue.div(customers).toFixed(2) : '0.00',
         newMembers: b.newMembers,
+        // 并列分列，口径与 /business 一致；响应 schema 已同步声明（陷阱 T-02）。
+        ...sumPackageMetrics(packageRowsForMonth(packageRows, m)),
       };
     });
   });

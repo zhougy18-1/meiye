@@ -91,7 +91,7 @@ onMounted(async () => {
     const config = await getSystemConfig();
     loginConfig.showCaptcha = config.enableLoginCaptcha;
     console.log('验证码配置:', loginConfig.showCaptcha ? '开启' : '关闭');
-  } catch(e) {
+  } catch {
     console.log('获取系统配置失败，使用默认配置');
     loginConfig.showCaptcha = true; // 默认显示验证码
   }
@@ -116,7 +116,7 @@ const handleLogin = async () => {
 
       ElMessage.success('登录成功！');
       router.replace(route.query.redirect || '/'); 
-    } catch (error) {
+    } catch {
       refreshCaptcha();
       form.captchaText = '';
     } finally {

@@ -1,4 +1,5 @@
 <template>
+  <div v-if="demoMessage" class="demo-banner">{{ demoMessage }}</div>
   <div v-if="!isPublicPage" class="app-wrapper">
     <!-- 统一的顶部导航栏 -->
     <el-header class="app-header">
@@ -103,6 +104,13 @@
     <!-- 主体内容区域 -->
     <main class="app-main">
       <div class="main-content-wrapper">
+        <el-alert
+          v-if="route.name === 'reports'"
+          class="report-accounting-note"
+          type="warning"
+          :closable="false"
+          title="套餐收入使用独立台账，当前未计入本页原收银报表。请到“套餐”页面查看套餐实收与核销次数。"
+        />
         <router-view v-slot="{ Component }">
           <transition name="fade" mode="out-in">
             <div class="page-container" v-if="Component">
@@ -150,13 +158,15 @@ import { useUserStore } from '@/stores/user';
 import { useSystemStore } from '@/stores/system';
 import { useUIStore } from '@/stores/ui';
 import { useRoute } from 'vue-router';
-import { User, UserFilled, ArrowDown, Money, Calendar, PieChart, Operation } from '@element-plus/icons-vue';
+import { User, UserFilled, ArrowDown, Money, Calendar, PieChart, Operation, Tickets, ChatDotRound } from '@element-plus/icons-vue';
 import appConfig from '@/config/app.js';
 
 const userStore = useUserStore();
 const systemStore = useSystemStore();
 const uiStore = useUIStore();
 const route = useRoute();
+// 演示文字只在显式注入时出现；正式构建不传该变量，因此生产产物不会包含演示提示。
+const demoMessage = import.meta.env.VITE_DEMO_MESSAGE || '';
 
 const showBirthdayBadge = ref(false);
 const isPublicPage = computed(() => ['login', 'booking'].includes(route.name));
@@ -192,6 +202,8 @@ const menuItems = shallowRef([
   { index: '/transactions', title: '收银', icon: Money },
   { index: '/members', title: '会员', icon: User },
   { index: '/appointments', title: '预约', icon: Calendar },
+  { index: '/packages', title: '套餐', icon: Tickets },
+  { index: '/sms-notifications', title: '短信', icon: ChatDotRound, roles: ['ADMIN', 'MANAGER'] },
   { index: '/reports', title: '报表', icon: PieChart, roles: ['ADMIN', 'MANAGER'] },
   { index: '/settings', title: '设置', icon: Operation, roles: ['ADMIN'] },
 ]);
@@ -246,6 +258,23 @@ watch(() => uiStore.fontSize, (newSize) => {
   display: flex;
   flex-direction: column;
 }
+.demo-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 34px;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  color: #8a4b08;
+  background: #fff3cd;
+  border-bottom: 1px solid #f3d48a;
+  font-size: 13px;
+  font-weight: 600;
+}
 .app-header {
   background-color: #fafafa;
   height: 60px;
@@ -253,7 +282,7 @@ watch(() => uiStore.fontSize, (newSize) => {
   padding: 0;
   flex-shrink: 0;
   position: fixed;
-  top: 0;
+  top: v-bind("isDemoMode ? '34px' : '0px'");
   left: 0;
   z-index: 1000;
   border-bottom: 1px solid #e4e7ed;
@@ -312,13 +341,14 @@ watch(() => uiStore.fontSize, (newSize) => {
 
 .app-main {
   flex-grow: 1;
-  padding-top: 60px;
+  padding-top: v-bind("isDemoMode ? '94px' : '60px'");
   background-color: #f0f2f5;
   overflow-y: auto;
 }
 .main-content-wrapper {
   padding: 20px;
 }
+.report-accounting-note { max-width: 1400px; margin: 0 auto 14px; }
 .page-container {
   max-width: 1400px;
   width: 100%;
@@ -382,7 +412,7 @@ watch(() => uiStore.fontSize, (newSize) => {
   .logo-text { display: none; }
   
   .app-main {
-    padding: 75px 15px 75px;
+    padding: v-bind("isDemoMode ? '109px 15px 75px' : '75px 15px 75px'");
   }
   .main-content-wrapper { padding: 0; }
   .page-container { padding: 15px; border-radius: 6px;}
@@ -398,9 +428,11 @@ watch(() => uiStore.fontSize, (newSize) => {
       box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
       z-index: 1000;
       border-top: 1px solid #e4e7ed;
+      overflow-x: auto;
   }
   .mobile-nav .nav-item {
       flex: 1;
+      min-width: 54px;
       padding: 0 5px;
       font-size: 12px;
       line-height: 1.2;

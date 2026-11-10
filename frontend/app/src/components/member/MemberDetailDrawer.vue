@@ -229,7 +229,7 @@ import Decimal from 'decimal.js';
 import { memberStatusText, memberStatusTagType, cardStatusText, cardStatusTagType, getCardDisplayName } from '@/utils/formatters.js';
 import { PAYMENT_METHODS, ISSUE_CARD_PAYMENT_OPTIONS } from '@/constants/payment.js';
 import { formatDateInAppTimeZone, formatPureDate, formatShortDateInAppTimeZone, formatFullDateTimeInAppTimeZone } from '@/utils/date.js';
-import { formatAmount, formatCurrency, formatDiscountRate, toDecimal } from '@/utils/currency.js';
+import { formatCurrency, formatDiscountRate, toDecimal } from '@/utils/currency.js';
 import PendingPaymentsSection from './PendingPaymentsSection.vue';
 
 const dialogVisible = ref(false);
@@ -308,7 +308,7 @@ const onDialogOpen = async () => {
     allCardTypes.value = cardTypesData;
     allStaff.value = staffData;
     pendingPayments.value = pendingData;
-  } catch (error) {
+  } catch {
     apiError.value = true;
     // Error fetching member details - handled silently
   } finally {

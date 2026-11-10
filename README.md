@@ -12,6 +12,18 @@
 >
 > 在线 SaaS 版本即将上线，不方便自行部署的可以直接注册免费使用，敬请关注 MMS 仓库动态。
 
+## M.77 版本
+
+本工作区已经加入 M.77 美肤空间需要的品牌界面、套餐次卡、消费短信台账和 Mac 演示启动器。
+
+> M.77 当前实施决策：首版只部署在店内 Windows 电脑，仅支持本机和员工内网访问。云服务器、公网域名和多门店版暂缓，以 `M77-WORKBUDDY-IMPLEMENTATION-PLAN.md` v1.2 为准。
+
+- 本机演示说明：[M77-DEMO.md](M77-DEMO.md)
+- 未来上云参考：[M77-PRODUCTION-RELEASE.md](M77-PRODUCTION-RELEASE.md)
+- WorkBuddy完整实施计划：[M77-WORKBUDDY-IMPLEMENTATION-PLAN.md](M77-WORKBUDDY-IMPLEMENTATION-PLAN.md)
+- 腾讯云短信配置：[SMS-SETUP.md](SMS-SETUP.md)
+- 飞书获客工作流：[FEISHU-ACQUISITION-WORKFLOW.md](FEISHU-ACQUISITION-WORKFLOW.md)
+
 ## 功能
 
 | 模块 | 功能 |

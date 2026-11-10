@@ -1,8 +1,8 @@
 -- DropIndex
-DROP INDEX `Card_balance_idx` ON `card`;
+DROP INDEX `Card_balance_idx` ON `Card`;
 
 -- DropIndex
-DROP INDEX `Card_isCustomCard_idx` ON `card`;
+DROP INDEX `Card_isCustomCard_idx` ON `Card`;
 
 -- CreateTable
 CREATE TABLE `TransactionCardLink` (

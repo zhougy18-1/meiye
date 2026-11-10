@@ -11,6 +11,7 @@ import {
 } from '../schemas/transactions.js';
 import { applyAuth } from '../utils/applyAuth.js';
 import { shopTodayRange, shopDayRange } from '../utils/shopTime.js';
+import { dispatchSmsSoon, queueConsumptionSms } from '../services/sms.js';
 
 // 取卡的有效折扣率：自定义折扣卡用 customDiscountRate，否则用卡类型的折扣率。
 // 计费必须与展示折扣（同样优先 customDiscountRate）保持一致。
@@ -273,8 +274,11 @@ async function handleSmartCardPayment(request, reply, memberId, serviceIds, manu
       data: transactionItems
     });
 
-    return { newTransaction, transactionItems, paymentDetails };
+    const smsNotification = await queueConsumptionSms(tx, newTransaction);
+    return { newTransaction, transactionItems, paymentDetails, smsNotification };
   });
+
+  dispatchSmsSoon(result.smsNotification?.id, request.log);
 
   // 返回结果
   return reply.send({
@@ -284,6 +288,9 @@ async function handleSmartCardPayment(request, reply, memberId, serviceIds, manu
       service: services.find(s => s.id === item.serviceId)
     })),
     cardPayments: result.paymentDetails,
+    smsNotification: result.smsNotification
+      ? { id: result.smsNotification.id, status: result.smsNotification.status }
+      : null,
     member: await prisma.member.findUnique({ where: { id: memberId } })
   });
 }
@@ -481,17 +488,25 @@ export default async function (fastify, opts) {
             });
         }
 
-        return tx.transaction.findUnique({
+        const transactionRecord = await tx.transaction.findUnique({
             where: { id: newTransaction.id },
             include: { member: true, staff: true, items: { include: { service: true } } },
         });
+        const smsNotification = await queueConsumptionSms(tx, newTransaction);
+        return { transactionRecord, smsNotification };
       });
+
+      dispatchSmsSoon(result.smsNotification?.id, request.log);
+      const transactionRecord = result.transactionRecord;
       
       const finalResult = {
-        ...result,
-        totalAmount: new Decimal(result.totalAmount).toFixed(2),
-        actualPaidAmount: new Decimal(result.actualPaidAmount).toFixed(2),
-        discountAmount: new Decimal(result.discountAmount).toFixed(2),
+        ...transactionRecord,
+        totalAmount: new Decimal(transactionRecord.totalAmount).toFixed(2),
+        actualPaidAmount: new Decimal(transactionRecord.actualPaidAmount).toFixed(2),
+        discountAmount: new Decimal(transactionRecord.discountAmount).toFixed(2),
+        smsNotification: result.smsNotification
+          ? { id: result.smsNotification.id, status: result.smsNotification.status }
+          : null,
       };
 
       return finalResult;

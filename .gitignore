@@ -21,3 +21,26 @@ DESIGN.md
 # 本地数据库备份
 .backup/
 backups/
+
+# M.77 Mac 演示运行日志
+.local-demo/
+
+# 可搬迁演示包生成的数据库快照
+portable/demo-data.sql
+portable/demo-data.sql.gz
+
+# 本地演示与过程文档（非部署所需，按经营者口径从版本库排除）
+M77-*.md
+FEISHU-*.md
+SMS-SETUP.md
+开始使用.txt
+# 本地一键启动器（文件名含 M77，非部署所需）
+*M77*.sh
+*M77*.command
+*M77*.bat
+start-demo.command
+portable/
+docker-compose.demo-portable.yml
+docs/*.mermaid
+docs/cloud-migration/
+docs/p0-gap-closure/

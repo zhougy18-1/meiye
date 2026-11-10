@@ -41,6 +41,8 @@
               :value="timeSlot.value"
             />
          </el-select>
+         <!-- P0 缺口补齐：按「床位 × 时段」显示剩余可约，不改变 timeSlots / appointmentHour 交互。 -->
+         <div v-if="capacityHint" class="capacity-hint">{{ capacityHint }}</div>
       </el-form-item>
       
       <el-form-item label="预约项目" prop="serviceIds">
@@ -65,6 +67,25 @@
         </el-select>
       </el-form-item>
 
+      <!-- P0 缺口补齐：新老客 / 来源渠道 / 床位，全部可空（旧记录显示「未标注」）。 -->
+      <el-form-item label="新老客" prop="customerType">
+        <el-select v-model="form.customerType" placeholder="可不标注" style="width: 100%" clearable>
+          <el-option v-for="item in customerTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-form-item>
+
+      <el-form-item label="来源渠道" prop="sourceChannel">
+        <el-select v-model="form.sourceChannel" placeholder="可不标注" style="width: 100%" clearable>
+          <el-option v-for="item in sourceChannelOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-form-item>
+
+      <el-form-item label="床位" prop="bedId">
+        <el-select v-model="form.bedId" placeholder="可不指定床位" style="width: 100%" clearable>
+          <el-option v-for="item in bedOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-form-item>
+
        <el-form-item label="备注" prop="notes">
         <el-input v-model="form.notes" type="textarea" placeholder="请输入备注" />
       </el-form-item>
@@ -77,12 +98,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue';
+import { ref, reactive, onMounted, computed, watch } from 'vue';
 
 import { getMembers } from '@/api/member.js';
 import { getServiceList } from '@/api/service.js';
 import { getStaffList } from '@/api/staff.js';
-import { createAppointment } from '@/api/appointment.js';
+import { createAppointment, getAppointmentCapacity } from '@/api/appointment.js';
+// 展示镜像：渠道 / 新老客 / 床位选项集中取自 constants/p0Gap.js，业务判定以后端为准。
+import { CUSTOMER_TYPE_OPTIONS, SOURCE_CHANNEL_OPTIONS, BED_OPTIONS } from '@/constants/p0Gap.js';
 import { ElMessage } from 'element-plus';
 
 const visible = ref(false);
@@ -91,6 +114,10 @@ const formRef = ref(null);
 const serviceList = ref([]);
 const staffList = ref([]);
 const selectedMember = ref(null);
+const capacity = ref(null);
+const customerTypeOptions = CUSTOMER_TYPE_OPTIONS;
+const sourceChannelOptions = SOURCE_CHANNEL_OPTIONS;
+const bedOptions = BED_OPTIONS;
 
 const getInitialForm = () => ({
   id: null,
@@ -102,6 +129,10 @@ const getInitialForm = () => ({
   assignedStaffId: null,
   serviceIds: [],
   notes: '',
+  // P0 缺口补齐：三个新字段，可空。
+  customerType: null,
+  sourceChannel: null,
+  bedId: null,
 });
 const form = reactive(getInitialForm());
 
@@ -161,6 +192,28 @@ const clearMemberSelection = () => {
     selectedMember.value = null;
 };
 
+const toDateParam = (value) => {
+  const d = new Date(value);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+// 日期变化时刷新该日「床位 × 时段」可约容量（接口失败不影响原有预约流程）。
+watch(() => form.appointmentDate, async (value) => {
+  if (!value) { capacity.value = null; return; }
+  try {
+    capacity.value = await getAppointmentCapacity(toDateParam(value));
+  } catch {
+    capacity.value = null;
+  }
+});
+
+const capacityHint = computed(() => {
+  if (!capacity.value || !form.appointmentTime) return '';
+  const slot = capacity.value.slots?.find(item => item.slot === form.appointmentTime);
+  if (!slot) return '';
+  return `该时段剩余可约 ${slot.available} / ${slot.total}`;
+});
+
 const handleSubmit = async () => {
   await formRef.value.validate(async (valid) => {
     if (!valid) return;
@@ -172,7 +225,8 @@ const handleSubmit = async () => {
 
       const submissionData = { ...form, appointmentTime: datePart.toISOString() };
       delete submissionData.appointmentDate;
-      
+      delete submissionData.id;
+
 await createAppointment(submissionData);
       // 核心：这里要使用 ElMessageBox.alert
 ElMessage.success('新增预约成功'); // 使用 ElMessage.success
@@ -193,6 +247,7 @@ const open = (initialDate = new Date()) => {
 const onDialogClosed = () => {
   Object.assign(form, getInitialForm());
   selectedMember.value = null;
+  capacity.value = null;
   if(formRef.value) {
     formRef.value.clearValidate();
   }
@@ -220,3 +275,7 @@ const timeSlots = computed(() => {
 
 defineExpose({ open });
 </script>
+
+<style scoped>
+.capacity-hint { color: #909399; font-size: 12px; line-height: 1.6; margin-top: 4px; }
+</style>
