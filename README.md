@@ -16,7 +16,7 @@
 
 本工作区已经加入 M.77 美肤空间需要的品牌界面、套餐次卡、消费短信台账和 Mac 演示启动器。
 
-> M.77 当前实施决策：首版只部署在店内 Windows 电脑，仅支持本机和员工内网访问。云服务器、公网域名和多门店版暂缓，以 `M77-WORKBUDDY-IMPLEMENTATION-PLAN.md` v1.2 为准。
+> 青丝店务系统当前采用云端部署。项目的已确认需求、里程碑及工程规则保存在本仓库上一级的 `docs/` 中；本 README 和下列历史说明只用于了解继承的代码，不作为当前产品决定。
 
 - 本机演示说明：[M77-DEMO.md](M77-DEMO.md)
 - 未来上云参考：[M77-PRODUCTION-RELEASE.md](M77-PRODUCTION-RELEASE.md)

@@ -31,6 +31,8 @@ import smsNotificationRoutes from './routes/smsNotifications.js';
 import tokenCleaner from './utils/tokenCleaner.js';
 import smsDispatcher from './utils/smsDispatcher.js';
 import prisma from './db/prisma.js';
+import { credentialVersion, isConfiguredShopAccount } from './utils/shopIdentity.js';
+import { enforceShopAccess, maskManagerPayload } from './utils/shopAccess.js';
 
 // Fastify 5.12 起数字跳数一律按不信任处理（校验不了直连的对端），填数字等于没开：
 // 生产环境拿不到 https 协议，Secure 的 session cookie 不下发，登录不了。宁可启动时报错
@@ -108,7 +110,7 @@ fastify.register(fastifyHelmet, {
 fastify.register(fastifyCookie);
 
 // 时区策略：后端始终返回 ISO（UTC）字符串，由前端在显示时按用户时区格式化。
-// 此前的 onSend hook 反模式（JSON.parse → 重写日期字段 → JSON.stringify）已移除。
+// 日期由前端格式化；M1 的 onSend 仅对店长响应中的手机号字段做脱敏。
 
 // Session配置 - 基于环境的安全设置
 const isProduction = process.env.NODE_ENV === 'production';
@@ -150,10 +152,31 @@ fastify.register(fastifyRateLimit, {
 // --- 认证装饰器 ---
 fastify.decorate("authenticate", async function(request, reply) {
   try {
-    request.user = await request.jwtVerify();
+    const tokenUser = await request.jwtVerify();
+    const currentUser = await prisma.user.findUnique({ where: { id: tokenUser.id } });
+    if (!isConfiguredShopAccount(currentUser)
+      || tokenUser.username !== currentUser.username
+      || tokenUser.role !== currentUser.role
+      || tokenUser.credentialVersion !== credentialVersion(currentUser)) {
+      reply.code(401).send({ message: '会话已失效，请重新登录。' });
+      return false;
+    }
+    request.user = { id: currentUser.id, username: currentUser.username, role: currentUser.role };
+    return true;
   } catch (err) {
     reply.code(401).send({ message: '认证失败：令牌无效或已过期，请重新登录。' });
+    return false;
   }
+});
+
+// Apply the two-account boundary to every private API, including legacy routes
+// whose plugin options previously failed to install authentication hooks.
+fastify.addHook('onRequest', async (request, reply) => {
+  return enforceShopAccess(request, reply, fastify.authenticate);
+});
+
+fastify.addHook('onSend', async (request, reply, payload) => {
+  return maskManagerPayload(request.user?.role, payload);
 });
 
 // --- RBAC 角色权限校验装饰器 ---

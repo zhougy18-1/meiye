@@ -543,7 +543,7 @@ const commissionableStaff = computed(() =>
 );
 
 const canShowVoidButton = computed(() => {
-  return systemConfig.value?.enableTransactionVoid && ['ADMIN', 'MANAGER'].includes(userStore.userRole);
+  return systemConfig.value?.enableTransactionVoid && userStore.userRole === 'ADMIN';
 });
 
 const sortedServiceList = computed(() => [...serviceList.value].sort((a, b) => a.sortOrder - b.sortOrder));

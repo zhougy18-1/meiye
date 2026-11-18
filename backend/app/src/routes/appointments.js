@@ -54,6 +54,12 @@ export default async function (fastify, opts) {
         bedId,
       } = request.body;
 
+    // 已保存会员的号码对店长只显示脱敏值，入库时须从会员资料取真实号码。
+    const linkedMember = memberId ? await prisma.member.findUnique({
+      where: { id: memberId }, select: { phone: true },
+    }) : null;
+    if (memberId && !linkedMember) return reply.code(404).send({ message: '会员不存在' });
+
     // 陷阱 T-06：店内 POST 原无任何冲突检测，本轮只新增床位冲突，
     // 不补手机号/员工 ±1h 检测（既有检测只在公开 booking.js，属不变更项）。
     const appointmentDate = new Date(appointmentTime);
@@ -70,7 +76,7 @@ export default async function (fastify, opts) {
         data: {
           id: await generateUniqueId(prisma.appointment),
           customerName: customerName || '非会员用户',
-          customerPhone,
+          customerPhone: linkedMember?.phone || customerPhone,
           appointmentTime: appointmentDate,
           notes,
           status: 'PENDING',

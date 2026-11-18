@@ -48,6 +48,7 @@
         <el-table-column label="会员卡" width="100" align="center">
           <template #default="{ row }">
             <el-button
+              v-if="isOwner"
               link
               type="primary"
               size="small"
@@ -110,7 +111,7 @@
         <!-- 10. 操作 -->
         <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link size="default" :icon="Edit" @click="handleEdit(row)">
+            <el-button v-if="isOwner" type="primary" link size="default" :icon="Edit" @click="handleEdit(row)">
               编辑
             </el-button>
           </template>
@@ -143,7 +144,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
+import { useUserStore } from '@/stores/user.js';
 import { getMembers } from '@/api/member.js';
 import { Plus, Edit, Search, CreditCard } from '@element-plus/icons-vue'; 
 import MemberForm from '@/components/MemberForm.vue';
@@ -159,6 +161,7 @@ import { debounce } from '@/utils/performance.js';
 
 // --- 响应式状态 ---
 const members = ref([]);
+const isOwner = computed(() => useUserStore().userRole === 'ADMIN');
 const loading = ref(false);
 const total = ref(0);
 const searchParams = reactive({

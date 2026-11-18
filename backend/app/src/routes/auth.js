@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import svgCaptcha from 'svg-captcha';
 import { randomBytes, createHash } from 'crypto';
 import { loginSchema, refreshSchema, logoutSchema } from '../schemas/auth.js';
+import { credentialVersion, isConfiguredShopAccount } from '../utils/shopIdentity.js';
 
 // 高熵 refresh token 用 SHA256 hash 存储；数据库不保留可被直接复用的明文。
 const hashRefreshToken = (token) => createHash('sha256').update(token).digest('hex');
@@ -56,16 +57,22 @@ export default async function (fastify, opts) {
       request.session.captcha = null;
     }
     const user = await prisma.user.findUnique({ where: { username } });
-    if (!user) {
+    if (!isConfiguredShopAccount(user)) {
       return reply.code(401).send({ message: '用户名或密码错误' });
     }
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return reply.code(401).send({ message: '用户名或密码错误' });
     }
+    if (user.role === 'MANAGER') {
+      const owner = await prisma.user.findUnique({ where: { username: process.env.ADMIN_USERNAME } });
+      if (owner && await bcrypt.compare(password, owner.password)) {
+        return reply.code(403).send({ message: '请由老板为店长设置独立密码' });
+      }
+    }
 
     const accessToken = fastify.jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
+      { id: user.id, username: user.username, role: user.role, credentialVersion: credentialVersion(user) },
       { expiresIn: '1h' }
     );
     
@@ -100,7 +107,9 @@ export default async function (fastify, opts) {
       include: { user: true }
     });
 
-    if (!storedToken || storedToken.expiresAt < new Date()) {
+    if (!storedToken || storedToken.expiresAt < new Date() || !isConfiguredShopAccount(storedToken.user)
+      || (storedToken.user.role === 'MANAGER' && process.env.ADMIN_PASSWORD
+        && await bcrypt.compare(process.env.ADMIN_PASSWORD, storedToken.user.password))) {
       if (storedToken) {
         await prisma.refreshToken.delete({ where: { id: storedToken.id }});
       }
@@ -118,7 +127,7 @@ export default async function (fastify, opts) {
 
     const user = storedToken.user;
     const newAccessToken = fastify.jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
+      { id: user.id, username: user.username, role: user.role, credentialVersion: credentialVersion(user) },
       { expiresIn: '1h' }
     );
 

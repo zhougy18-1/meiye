@@ -173,7 +173,7 @@ const isPublicPage = computed(() => ['login', 'booking'].includes(route.name));
 
 const fetchAllReminders = () => {
   systemStore.fetchTodayAppointmentCount();
-  systemStore.fetchUpcomingBirthdayCount();
+  if (userStore.userRole === 'ADMIN') systemStore.fetchUpcomingBirthdayCount();
 };
 
 onMounted(() => {
@@ -202,9 +202,9 @@ const menuItems = shallowRef([
   { index: '/transactions', title: '收银', icon: Money },
   { index: '/members', title: '会员', icon: User },
   { index: '/appointments', title: '预约', icon: Calendar },
-  { index: '/packages', title: '套餐', icon: Tickets },
-  { index: '/sms-notifications', title: '短信', icon: ChatDotRound, roles: ['ADMIN', 'MANAGER'] },
-  { index: '/reports', title: '报表', icon: PieChart, roles: ['ADMIN', 'MANAGER'] },
+  { index: '/packages', title: '套餐', icon: Tickets, roles: ['ADMIN'] },
+  { index: '/sms-notifications', title: '短信', icon: ChatDotRound, roles: ['ADMIN'] },
+  { index: '/reports', title: '报表', icon: PieChart, roles: ['ADMIN'] },
   { index: '/settings', title: '设置', icon: Operation, roles: ['ADMIN'] },
 ]);
 

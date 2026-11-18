@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "node --import tsx --test --test-concurrency=1 tests/p0-gap/*.test.js",
+    "test:m1": "node --test tests/m1/*.test.js",
     "dev": "prisma generate && prisma migrate deploy && tsx init-admin.js && tsx --watch src/server.js",
     "build": "prisma generate",
     "start": "tsx src/server.js",

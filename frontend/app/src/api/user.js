@@ -10,3 +10,6 @@ export const updateUserPassword = (data) => {
     data, // { oldPassword, newPassword }
   });
 };
+
+export const getManagerAccount = () => request({ url: '/users/manager', method: 'get' });
+export const resetManagerPassword = (data) => request({ url: '/users/manager/password', method: 'patch', data });

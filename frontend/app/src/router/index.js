@@ -38,20 +38,20 @@ const routes = [
   {
     path: '/packages',
     name: 'packages',
-    component: () => import('../views/PackageView.vue')
+    component: () => import('../views/PackageView.vue'),
+    meta: { roles: ['ADMIN'] }
   },
   {
     path: '/sms-notifications',
     name: 'sms-notifications',
     component: () => import('../views/SmsNotificationView.vue'),
-    meta: { roles: ['ADMIN', 'MANAGER'] }
+    meta: { roles: ['ADMIN'] }
   },
   {
     path: '/reports',
     name: 'reports',
     component: () => import('../views/ReportView.vue'),
-    // 权限元信息：只有 ADMIN 和 MANAGER 可以访问
-    meta: { roles: ['ADMIN', 'MANAGER'] }
+    meta: { roles: ['ADMIN'] }
   },
   {
     path: '/settings',
@@ -62,7 +62,7 @@ const routes = [
   },
   {
     path: '/',
-    redirect: '/transactions'
+    redirect: () => useUserStore().userRole === 'MANAGER' ? '/appointments' : '/transactions'
   },
   { 
     path: '/:pathMatch(.*)*', 

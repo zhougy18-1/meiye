@@ -34,6 +34,10 @@
         <PasswordManager />
       </el-tab-pane>
 
+      <el-tab-pane label="店长账号" name="managerAccount">
+        <ManagerAccount />
+      </el-tab-pane>
+
       <el-tab-pane
         label="通用设置"
         name="general"
@@ -68,6 +72,7 @@ import ServiceManager from '@/components/settings/ServiceManager.vue';
 import CardTypeManager from '@/components/settings/CardTypeManager.vue';
 import StaffManager from '@/components/settings/StaffManager.vue';
 import PasswordManager from '@/components/settings/PasswordManager.vue';
+import ManagerAccount from '@/components/settings/ManagerAccount.vue';
 import ConfigManager from '@/components/settings/ConfigManager.vue';
 import VoidLogManager from '@/components/settings/VoidLogManager.vue';
 import BookingManager from '@/components/settings/BookingManager.vue';
