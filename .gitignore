@@ -3,14 +3,43 @@
 **/.DS_Store
 *.zip
 
+# 本机依赖、构建与测试产物
+**/dist/
+**/build/
+**/coverage/
+**/.vite/
+**/.turbo/
+*.log
+*.tmp
+*.swp
+
 # Prisma 生成的客户端
 **/src/generated/
 
 # 环境配置
 .env
 **/.env
+**/.env.*
 !**/.env.example
 scripts/deploy.env
+
+# 凭证、证书私钥及真实经营数据
+*.pem
+*.key
+*.p12
+*.pfx
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.sql.gz
+*.csv
+*.xls
+*.xlsx
+**/uploads/
+**/exports/
+**/private-data/
+**/customer-data/
 
 # Claude
 .claude/
