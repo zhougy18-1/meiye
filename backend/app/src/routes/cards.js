@@ -6,6 +6,7 @@ import Decimal from 'decimal.js';
 import { issueWithTransactionSchema } from '../schemas/cards.js';
 import { idParam } from '../schemas/common.js';
 import { applyAuth } from '../utils/applyAuth.js';
+import { queueTransactionSms, dispatchSmsSoon } from '../services/sms.js';
 
 export default async function (fastify, opts) {
   applyAuth(fastify, opts);
@@ -56,7 +57,7 @@ export default async function (fastify, opts) {
         });
 
         // 创建交易记录
-        await tx.transaction.create({
+        const newTransaction = await tx.transaction.create({
           data: {
             id: await generateUniqueId(tx.transaction),
             member: { connect: { id: memberId } },
@@ -73,6 +74,9 @@ export default async function (fastify, opts) {
           },
         });
 
+        // 办卡/充值也推送短信通知（会员需开启短信通知且手机号合法）
+        const smsNotification = await queueTransactionSms(tx, newTransaction);
+        dispatchSmsSoon(smsNotification?.id, request.log);
 
         return { newCard };
       });

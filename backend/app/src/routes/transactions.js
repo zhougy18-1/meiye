@@ -10,9 +10,9 @@ import {
   transactionsQuerySchema
 } from '../schemas/transactions.js';
 import { applyAuth } from '../utils/applyAuth.js';
-import { transactionSearchWhere } from '../utils/shopAccess.js';
 import { shopTodayRange, shopDayRange } from '../utils/shopTime.js';
-import { dispatchSmsSoon, queueConsumptionSms } from '../services/sms.js';
+import { dispatchSmsSoon, queueTransactionSms } from '../services/sms.js';
+import { transactionSearchWhere } from '../utils/shopAccess.js';
 
 // 取卡的有效折扣率：自定义折扣卡用 customDiscountRate，否则用卡类型的折扣率。
 // 计费必须与展示折扣（同样优先 customDiscountRate）保持一致。
@@ -275,7 +275,7 @@ async function handleSmartCardPayment(request, reply, memberId, serviceIds, manu
       data: transactionItems
     });
 
-    const smsNotification = await queueConsumptionSms(tx, newTransaction);
+    const smsNotification = await queueTransactionSms(tx, newTransaction);
     return { newTransaction, transactionItems, paymentDetails, smsNotification };
   });
 
@@ -493,7 +493,7 @@ export default async function (fastify, opts) {
             where: { id: newTransaction.id },
             include: { member: true, staff: true, items: { include: { service: true } } },
         });
-        const smsNotification = await queueConsumptionSms(tx, newTransaction);
+        const smsNotification = await queueTransactionSms(tx, newTransaction);
         return { transactionRecord, smsNotification };
       });
 

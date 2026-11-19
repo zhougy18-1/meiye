@@ -38,15 +38,21 @@ export function getSmsRuntimeConfig() {
     provider,
     configured: provider === 'mock' || (provider === 'tencent' && tencentConfigured()),
     isSimulation: provider === 'mock',
-    templatePreview: '您于{time}消费{amount}元，账户余额{balance}元。如非本人操作请联系门店。',
+    templatePreview: '您于{time}消费{amount}元，账户余额{balance}元。如非本人操作请联系M.77美肤空间门店。',
+    templatePreviews: {
+      consume: '您于{time}消费{amount}元，账户余额{balance}元。如非本人操作请联系M.77美肤空间门店。',
+      recharge: '您于{time}充值{amount}元，当前会员卡余额{balance}元。',
+      pending: '您于{time}挂账{amount}元，当前会员卡余额{balance}元，请尽快到店结清。',
+    },
     consentRequired: true,
     // 依赖待决 Q-12：回执回调端点只读开关（默认关闭），便于 AC-06 核验；不暴露任何密钥。
     receiptCallbackEnabled: P0_GAP_POLICIES.SMS_RECEIPT_CALLBACK_ENABLED,
   };
 }
 
-// 与收银流水在同一数据库事务内生成 outbox，确保不会出现“收银成功但通知记录丢失”。
-export async function queueConsumptionSms(db, transaction) {
+// 与收银流水在同一数据库事务内生成 outbox，确保不会出现"收银成功但通知记录丢失"。
+// 支持三类交易短信：消费(NORMAL)、充值/办卡(CARD_PURCHASE)、挂账(PENDING)。
+export async function queueTransactionSms(db, transaction) {
   if (!enabled() || !transaction.memberId) return null;
 
   const member = await db.member.findUnique({
@@ -59,7 +65,8 @@ export async function queueConsumptionSms(db, transaction) {
     where: { memberId: member.id, status: 'ACTIVE' },
     _sum: { balance: true },
   });
-  const amount = new Decimal(transaction.actualPaidAmount).toFixed(2);
+  const category = transactionTypeCategory(transaction.transactionType);
+  const amount = new Decimal(transaction.actualPaidAmount).abs().toFixed(2);
   const balanceAfter = new Decimal(balance._sum.balance?.toString() || 0).toFixed(2);
   const occurredAt = transaction.transactionTime || new Date();
   const time = formatShopTime(occurredAt);
@@ -74,7 +81,7 @@ export async function queueConsumptionSms(db, transaction) {
     amount,
     balanceAfter,
     occurredAt,
-    messagePreview: `您于${time}消费${amount}元，账户余额${balanceAfter}元。如非本人操作请联系门店。`,
+    messagePreview: buildMessage(category, time, amount, balanceAfter),
     templateParams: params,
     errorMessage: validPhone ? null : '会员手机号格式无效，未创建发送任务',
   };
@@ -87,8 +94,29 @@ export async function queueConsumptionSms(db, transaction) {
   }
 }
 
-async function sendWithTencent(item, phone) {
+function transactionTypeCategory(type) {
+  if (type === 'CARD_PURCHASE') return 'recharge';
+  if (type === 'PENDING') return 'pending';
+  return 'consume';
+}
+
+function buildMessage(category, time, amount, balanceAfter) {
+  if (category === 'recharge') {
+    return `您于${time}充值${amount}元，当前会员卡余额${balanceAfter}元。`;
+  }
+  if (category === 'pending') {
+    return `您于${time}挂账${amount}元，当前会员卡余额${balanceAfter}元，请尽快到店结清。`;
+  }
+  return `您于${time}消费${amount}元，账户余额${balanceAfter}元。如非本人操作请联系M.77美肤空间门店。`;
+}
+
+async function sendWithTencent(item, phone, category = 'consume') {
   if (!tencentConfigured()) throw new Error('腾讯云短信参数未配置完整');
+  const defaultTemplateId = process.env.TENCENT_SMS_TEMPLATE_ID;
+  const templateId =
+    category === 'recharge' ? (process.env.TENCENT_SMS_TEMPLATE_ID_RECHARGE || defaultTemplateId)
+      : category === 'pending' ? (process.env.TENCENT_SMS_TEMPLATE_ID_PENDING || defaultTemplateId)
+        : defaultTemplateId;
   const sdkModule = await import('tencentcloud-sdk-nodejs');
   const tencentcloud = sdkModule.default || sdkModule;
   const SmsClient = tencentcloud.sms.v20210111.Client;
@@ -104,7 +132,7 @@ async function sendWithTencent(item, phone) {
   const response = await client.SendSms({
     SmsSdkAppId: process.env.TENCENT_SMS_SDK_APP_ID,
     SignName: process.env.TENCENT_SMS_SIGN_NAME,
-    TemplateId: process.env.TENCENT_SMS_TEMPLATE_ID,
+    TemplateId: templateId,
     TemplateParamSet: [String(params.time), String(params.amount), String(params.balance)],
     PhoneNumberSet: [`+86${phone}`],
     SessionContext: item.id,
@@ -137,8 +165,13 @@ export async function dispatchSmsNotification(id, { force = false } = {}) {
   if (claimed.count !== 1) return prisma.smsNotification.findUnique({ where: { id } });
 
   const item = await prisma.smsNotification.findUnique({
-    where: { id }, include: { member: { select: { phone: true, smsNotificationEnabled: true } } },
+    where: { id },
+    include: {
+      member: { select: { phone: true, smsNotificationEnabled: true } },
+      transaction: { select: { transactionType: true } },
+    },
   });
+  const category = transactionTypeCategory(item.transaction?.transactionType);
   if (!enabled()) {
     return prisma.smsNotification.update({
       where: { id }, data: { status: 'SKIPPED', errorMessage: '短信功能已关闭', nextAttemptAt: null },
@@ -162,7 +195,7 @@ export async function dispatchSmsNotification(id, { force = false } = {}) {
     }
     if (item.provider !== 'tencent') throw new Error(`不支持的短信通道：${item.provider}`);
 
-    const sent = await sendWithTencent(item, item.member.phone);
+    const sent = await sendWithTencent(item, item.member.phone, category);
     return prisma.smsNotification.update({
       where: { id },
       data: { status: 'ACCEPTED', providerRequestId: sent.requestId, providerCode: sent.code, nextAttemptAt: null },

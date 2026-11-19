@@ -7,6 +7,7 @@ import { getMemberBalanceSnapshot, atomicDecrementBalance } from '../utils/balan
 import { httpError } from '../utils/httpError.js';
 import { idParam } from '../schemas/common.js';
 import { applyAuth } from '../utils/applyAuth.js';
+import { queueTransactionSms, dispatchSmsSoon } from '../services/sms.js';
 import { memberSearchWhere } from '../utils/shopAccess.js';
 import {
   createMemberSchema,
@@ -439,6 +440,10 @@ export default async function (fastify, opts) {
         transactionTime: createdAt ? new Date(createdAt) : new Date()
       }
     });
+
+    // 挂账也推送短信通知（会员需开启短信通知且手机号合法）
+    const smsNotification = await queueTransactionSms(prisma, transaction);
+    dispatchSmsSoon(smsNotification?.id, request.log);
 
     // 返回兼容格式
     const pendingPayment = {
