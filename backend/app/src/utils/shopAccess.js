@@ -28,12 +28,31 @@ export function managerMayAccess(method, url) {
 }
 
 export function maskPhone(phone) {
-  if (typeof phone !== 'string' || phone.length < 7) return phone;
+  if (typeof phone !== 'string') return phone;
   if (/^\d{3}\*+\d{4}$/.test(phone)) return phone;
+  if (!/^1\d{10}$/.test(phone)) return '****';
   return `${phone.slice(0, 3)}****${phone.slice(-4)}`;
 }
 
 const phoneKeys = new Set(['phone', 'customerPhone', 'memberPhone', 'phoneNumber', 'mobile']);
+
+export function memberSearchWhere(search, role) {
+  if (!search) return {};
+  return { OR: [
+    { name: { contains: search } },
+    ...(role === 'ADMIN' ? [{ phone: { contains: search } }] : []),
+  ] };
+}
+
+export function transactionSearchWhere(search, role) {
+  if (!search?.trim()) return null;
+  const term = search.trim();
+  return { OR: [
+    { member: { name: { contains: term } } },
+    { customerName: { contains: term } },
+    ...(role === 'ADMIN' ? [{ member: { phone: { contains: term } } }] : []),
+  ] };
+}
 
 export function maskPhoneFields(value) {
   if (Array.isArray(value)) return value.map(maskPhoneFields);

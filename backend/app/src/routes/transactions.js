@@ -10,6 +10,7 @@ import {
   transactionsQuerySchema
 } from '../schemas/transactions.js';
 import { applyAuth } from '../utils/applyAuth.js';
+import { transactionSearchWhere } from '../utils/shopAccess.js';
 import { shopTodayRange, shopDayRange } from '../utils/shopTime.js';
 import { dispatchSmsSoon, queueConsumptionSms } from '../services/sms.js';
 
@@ -628,24 +629,8 @@ export default async function (fastify, opts) {
     }
     
     // 服务器端搜索过滤
-    if (search && search.trim()) {
-      const searchTerm = search.trim();
-      where.OR = [
-        {
-          member: {
-            name: { contains: searchTerm }
-          }
-        },
-        {
-          member: {
-            phone: { contains: searchTerm }
-          }
-        },
-        {
-          customerName: { contains: searchTerm }
-        }
-      ];
-    }
+    const nameSearch = transactionSearchWhere(search, request.user.role);
+    if (nameSearch) where.OR = nameSearch.OR;
 
     // 并行执行查询和计数
     const [transactions, total] = await Promise.all([

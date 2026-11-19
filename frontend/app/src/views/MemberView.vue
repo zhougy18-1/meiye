@@ -12,7 +12,7 @@
         <el-form-item>
   <el-input
     v-model="searchParams.search"
-    placeholder="输入会员姓名或手机号进行搜索"
+    :placeholder="isOwner ? '输入会员姓名或手机号进行搜索' : '输入会员姓名进行搜索'"
     clearable
     size="large"
     class="search-input"

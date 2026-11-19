@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import Fastify from 'fastify';
 import bcrypt from 'bcryptjs';
 import { credentialVersion, isConfiguredShopAccount } from '../../src/utils/shopIdentity.js';
-import { enforceShopAccess, managerMayAccess, maskManagerPayload, maskPhoneFields } from '../../src/utils/shopAccess.js';
+import { enforceShopAccess, managerMayAccess, maskManagerPayload, maskPhoneFields, maskPhone,
+  memberSearchWhere, transactionSearchWhere } from '../../src/utils/shopAccess.js';
 
 test('only configured owner and manager accounts are eligible', () => {
   const old = process.env.ADMIN_USERNAME;
@@ -50,6 +51,15 @@ test('manager route allowlist rejects sensitive operations', () => {
   ]) assert.equal(managerMayAccess(method, path), false, `${method} ${path}`);
 });
 
+test('manager searches cannot use hidden phone digits as an oracle', () => {
+  const memberQuery = memberSearchWhere('1234', 'MANAGER');
+  const transactionQuery = transactionSearchWhere('1234', 'MANAGER');
+  assert.equal(JSON.stringify(memberQuery).includes('phone'), false);
+  assert.equal(JSON.stringify(transactionQuery).includes('phone'), false);
+  assert.equal(JSON.stringify(memberSearchWhere('1234', 'ADMIN')).includes('phone'), true);
+  assert.equal(JSON.stringify(transactionSearchWhere('1234', 'ADMIN')).includes('phone'), true);
+});
+
 test('manager responses mask nested phones while owner responses retain them', () => {
   const original = { phone: '13812345678', customerPhone: '13912345678', member: { phone: '13712345678' },
     rows: [{ memberPhone: '13612345678' }], amount: 99 };
@@ -59,6 +69,9 @@ test('manager responses mask nested phones while owner responses retain them', (
   assert.equal(masked.member.phone, '137****5678');
   assert.equal(masked.rows[0].memberPhone, '136****5678');
   assert.equal(masked.amount, 99);
+  assert.equal(maskPhone('1234567'), '****');
+  assert.equal(maskPhone('123456'), '****');
+  assert.equal(maskPhone('010-12345678'), '****');
   assert.equal(original.phone, '13812345678');
   assert.equal(maskManagerPayload('ADMIN', JSON.stringify(original)), JSON.stringify(original));
   assert.equal(JSON.parse(maskManagerPayload('MANAGER', JSON.stringify(original))).phone, '138****5678');

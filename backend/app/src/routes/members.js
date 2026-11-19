@@ -7,6 +7,7 @@ import { getMemberBalanceSnapshot, atomicDecrementBalance } from '../utils/balan
 import { httpError } from '../utils/httpError.js';
 import { idParam } from '../schemas/common.js';
 import { applyAuth } from '../utils/applyAuth.js';
+import { memberSearchWhere } from '../utils/shopAccess.js';
 import {
   createMemberSchema,
   updateMemberSchema,
@@ -61,12 +62,7 @@ export default async function (fastify, opts) {
     const validPageNum = Math.max(pageNum, 1);
     const skip = (validPageNum - 1) * limitNum;
 
-      const where = search ? {
-          OR: [
-            { name: { contains: search } },
-            { phone: { contains: search } },
-          ],
-        } : {};
+      const where = memberSearchWhere(search, request.user.role);
 
       const shouldIncludeCards = includeCards === 'true';
 

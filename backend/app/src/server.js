@@ -304,8 +304,10 @@ const start = async () => {
     }
     
     console.log('=== 启动 Fastify 服务器 ===');
-    await fastify.listen({ port: 3000, host: '0.0.0.0' });
-    console.log('✅ 服务器启动成功: http://0.0.0.0:3000');
+    const port = Number.parseInt(process.env.PORT || '3000', 10);
+    const host = process.env.HOST || '0.0.0.0';
+    await fastify.listen({ port, host });
+    console.log(`✅ 服务器启动成功: http://${host}:${port}`);
     
     // 启动token清理器
     tokenCleaner.start();
