@@ -394,4 +394,50 @@ const canVoidTransaction = (transaction) => {
     font-size: 11px;
   }
 }
+
+/* 与 C 版四步式收银台统一的记录卡片 */
+.today-records {
+  margin-top: 0;
+  padding: 20px 22px 10px;
+  border: 1px solid #e7dfd4;
+  border-radius: 18px;
+  background: rgba(255, 253, 249, .96);
+  box-shadow: 0 14px 36px rgba(69, 56, 42, .07);
+}
+.today-records .page-header {
+  padding-bottom: 16px;
+  border-bottom-color: #e7dfd4;
+}
+.today-records .page-title {
+  position: relative;
+  padding-left: 14px;
+  color: #34312d;
+  font-size: 21px;
+  letter-spacing: .04em;
+}
+.today-records .page-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 4px;
+  border-radius: 99px;
+  background: #9a7448;
+}
+.today-table :deep(th) { background-color: #f4efe8 !important; }
+.today-table :deep(thead) { color: #655e56; }
+.today-table :deep(.el-table__row:hover > td.el-table__cell) { background: #faf7f2 !important; }
+.column-filter-trigger {
+  color: #7a6b5b;
+  border-color: #ddd4c8;
+  border-radius: 8px;
+  background: #fffdf9;
+}
+.column-filter-trigger:hover {
+  color: #9a7448;
+  border-color: #9a7448;
+  background: #f6f1ea;
+}
+.pagination-section { border-top-color: #e7dfd4; background: #faf7f2; }
 </style>

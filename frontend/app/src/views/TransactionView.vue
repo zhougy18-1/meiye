@@ -1,15 +1,36 @@
 <template>
-  <div class="page-content">
-    <div class="page-header">
-      <h2 class="page-title">收银 · 结算</h2>
-    </div>
+  <div class="page-content checkout-page">
+    <header class="checkout-header">
+      <div class="title-group">
+        <span class="title-mark" aria-hidden="true"></span>
+        <div>
+          <p class="page-eyebrow">M.77 CHECKOUT</p>
+          <h2 class="page-title">收银台</h2>
+        </div>
+      </div>
+      <div class="daily-metrics" aria-label="今日经营概览">
+        <div class="metric-card">
+          <span class="metric-label">今日收款</span>
+          <strong>{{ formatCurrency(todayRevenue) }}</strong>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">今日客次</span>
+          <strong>{{ transactionPagination.total }}</strong>
+        </div>
+      </div>
+    </header>
 
-    <el-row :gutter="20">
-      <!-- 左侧：开单区域 -->
-      <el-col :lg="14" :md="12" :xs="24" class="left-panel">
-        <h3 class="panel-title">请选择消费项目</h3>
-        <el-form ref="formRef" :model="form" label-width="100px" label-position="top">
-          <el-form-item label="选择会员">
+    <div class="checkout-workspace">
+      <section class="checkout-flow" aria-label="四步收银流程">
+        <el-form ref="formRef" :model="form" label-position="top" class="checkout-form">
+          <div class="flow-step">
+            <div class="step-index">01</div>
+            <div class="step-content">
+              <div class="step-heading">
+                <h3>会员</h3>
+                <span>可搜索会员，也可直接为散客开单</span>
+              </div>
+              <el-form-item label="选择会员">
             <el-autocomplete
               v-model="memberQuery"
               :fetch-suggestions="queryMembersAsync"
@@ -39,56 +60,74 @@
             <el-tag v-if="form.memberId" type="success" style="margin-top: 10px;">
               当前会员: {{ selectedMember.name }} ({{ selectedMember.phone || '手机号未填写' }})
             </el-tag>
-          </el-form-item>
+              </el-form-item>
+            </div>
+          </div>
 
-          <el-form-item label="选择服务">
-            <el-select
-              :model-value="uniqueServiceIds"
-              multiple
-              filterable
-              placeholder="请选择服务项目"
-              size="large"
-              style="width: 100%"
-              @change="handleServiceChange"
-            >
-              <template #tag>
-                <el-tag
-                  v-for="sid in uniqueServiceIds"
-                  :key="sid"
-                  closable
-                  type="info"
-                  disable-transitions
-                  class="service-tag"
-                  @close="removeServiceId(sid)"
-                >
-                  {{ serviceMap.get(sid)?.name }}
-                  <span v-if="serviceQuantities[sid] > 1" class="service-tag-qty">
-                    ×{{ serviceQuantities[sid] }}
-                  </span>
-                </el-tag>
-              </template>
-              <el-option
-                v-for="item in sortedServiceList"
-                :key="item.id"
-                :label="`${item.name} (${formatCurrency(item.standardPrice)})`"
-                :value="item.id"
-              />
-            </el-select>
-          </el-form-item>
+          <div class="flow-step">
+            <div class="step-index">02</div>
+            <div class="step-content">
+              <div class="step-heading">
+                <h3>项目与员工</h3>
+                <span>选择本次服务内容与服务人员</span>
+              </div>
+              <div class="service-staff-grid">
+                <el-form-item label="服务项目">
+                  <el-select
+                    :model-value="uniqueServiceIds"
+                    multiple
+                    filterable
+                    placeholder="请选择服务项目"
+                    size="large"
+                    style="width: 100%"
+                    @change="handleServiceChange"
+                  >
+                    <template #tag>
+                      <el-tag
+                        v-for="sid in uniqueServiceIds"
+                        :key="sid"
+                        closable
+                        type="info"
+                        disable-transitions
+                        class="service-tag"
+                        @close="removeServiceId(sid)"
+                      >
+                        {{ serviceMap.get(sid)?.name }}
+                        <span v-if="serviceQuantities[sid] > 1" class="service-tag-qty">×{{ serviceQuantities[sid] }}</span>
+                      </el-tag>
+                    </template>
+                    <el-option
+                      v-for="item in sortedServiceList"
+                      :key="item.id"
+                      :label="`${item.name} (${formatCurrency(item.standardPrice)})`"
+                      :value="item.id"
+                    />
+                  </el-select>
+                </el-form-item>
 
-          <el-form-item v-if="commissionableStaff.length > 0" label="服务员工">
-            <el-select v-model="form.staffId" placeholder="请选择服务员工" size="large" style="width: 100%">
-              <el-option
-                v-for="item in commissionableStaff"
-                :key="item.id"
-                :label="`${item.name} (${item.position})`"
-                :value="item.id"
-              />
-            </el-select>
-          </el-form-item>
+                <el-form-item v-if="commissionableStaff.length > 0" label="服务员工">
+                  <el-select v-model="form.staffId" placeholder="请选择服务员工" size="large" style="width: 100%">
+                    <el-option
+                      v-for="item in commissionableStaff"
+                      :key="item.id"
+                      :label="`${item.name} (${item.position})`"
+                      :value="item.id"
+                    />
+                  </el-select>
+                </el-form-item>
+              </div>
+            </div>
+          </div>
 
-          <el-form-item label="支付方式">
-            <el-radio-group v-model="form.paymentMethod" size="large">
+          <div class="flow-step">
+            <div class="step-index">03</div>
+            <div class="step-content">
+              <div class="step-heading">
+                <h3>支付方式</h3>
+                <span>会员卡支付需先选择会员</span>
+              </div>
+              <el-form-item class="payment-method-field">
+                <el-radio-group v-model="form.paymentMethod" size="large" class="payment-methods">
               <el-radio-button
                 v-for="opt in CHECKOUT_PAYMENT_OPTIONS"
                 :key="opt.value"
@@ -98,56 +137,77 @@
                 {{ opt.label }}
               </el-radio-button>
             </el-radio-group>
-          </el-form-item>
+              </el-form-item>
+              <div v-show="form.paymentMethod === PAYMENT_METHODS.MEMBER_CARD" class="member-card-options">
+                <el-form-item label="选卡方式">
+                  <el-radio-group v-model="cardPaymentMode" size="default">
+                    <el-radio-button value="auto">自动选择</el-radio-button>
+                    <el-radio-button value="manual">手动选择</el-radio-button>
+                  </el-radio-group>
+                </el-form-item>
+                <el-form-item v-show="cardPaymentMode === 'manual'" label="会员卡">
+                  <el-select v-model="form.cardId" placeholder="请选择会员卡" size="large" style="width: 100%">
+                    <el-option
+                      v-for="card in availableCards"
+                      :key="card.id"
+                      :label="`${getCardDisplayName(card)} (余额: ${formatCurrency(card.balance)}, ${formatDiscountRate(getCardDiscountRate(card))})`"
+                      :value="card.id"
+                    />
+                  </el-select>
+                </el-form-item>
+              </div>
+            </div>
+          </div>
 
-          <el-form-item v-show="form.paymentMethod === PAYMENT_METHODS.MEMBER_CARD" label="会员卡支付模式">
-            <el-radio-group v-model="cardPaymentMode" size="default">
-              <el-radio-button value="auto">自动选择</el-radio-button>
-              <el-radio-button value="manual">手动选择</el-radio-button>
-            </el-radio-group>
-          </el-form-item>
-
-          <el-form-item v-show="form.paymentMethod === PAYMENT_METHODS.MEMBER_CARD && cardPaymentMode === 'manual'" label="选择会员卡">
-            <el-select v-model="form.cardId" placeholder="请选择会员卡" size="large" style="width: 100%">
-              <el-option
-                v-for="card in availableCards"
-                :key="card.id"
-                :label="`${getCardDisplayName(card)} (余额: ${formatCurrency(card.balance)}, ${formatDiscountRate(getCardDiscountRate(card))})`"
-                :value="card.id"
-              />
-            </el-select>
-          </el-form-item>
-
-          <el-form-item label="交易时间">
-            <el-date-picker
-              v-model="form.transactionTime"
-              type="datetime"
-              placeholder="默认为当前时间（可选择自定义）"
-              size="large"
-              style="width: 100%"
-              format="YYYY-MM-DD HH:mm:ss"
-              value-format="YYYY-MM-DD HH:mm:ss"
-              @change="onTransactionTimeChange"
-              clearable
-            />
-          </el-form-item>
-
-          <el-form-item label="备注">
-            <el-input v-model="form.notes" type="textarea" placeholder="请输入备注信息" size="large" />
-          </el-form-item>
+          <div class="flow-step flow-step-last">
+            <div class="step-index">04</div>
+            <div class="step-content">
+              <div class="step-heading">
+                <h3>确认</h3>
+                <span>核对时间和备注后完成收款</span>
+              </div>
+              <div class="confirm-grid">
+                <el-form-item label="交易时间">
+                  <el-date-picker
+                    v-model="form.transactionTime"
+                    type="datetime"
+                    placeholder="默认当前时间（可选择自定义）"
+                    size="large"
+                    style="width: 100%"
+                    format="YYYY-MM-DD HH:mm:ss"
+                    value-format="YYYY-MM-DD HH:mm:ss"
+                    @change="onTransactionTimeChange"
+                    clearable
+                  />
+                </el-form-item>
+                <el-form-item label="备注">
+                  <el-input v-model="form.notes" placeholder="请输入备注信息" size="large" />
+                </el-form-item>
+              </div>
+            </div>
+          </div>
         </el-form>
-      </el-col>
+      </section>
 
-      <!-- 右侧：订单预览和结算 -->
-      <el-col :lg="10" :md="12" :xs="24" class="right-panel">
-        <h3 class="panel-title-right">消费详情</h3>
-
-        <div v-if="cartItems.length === 0" class="empty-cart">
-          <el-empty :image-size="100" description="先选择会员（可跳过）和服务项目，结算汇总会出现在这里" />
+      <aside class="receipt-panel" aria-label="本次消费摘要">
+        <div class="receipt-header">
+          <div>
+            <p>ORDER SUMMARY</p>
+            <h3>本次消费</h3>
+          </div>
+          <span class="receipt-status">待收款</span>
+        </div>
+        <div class="receipt-member">
+          <span>会员</span>
+          <strong>{{ selectedMember?.name || '散客' }}</strong>
         </div>
 
-        <div v-else>
-          <el-table :data="cartItems" style="width: 100%">
+        <div v-if="cartItems.length === 0" class="empty-cart">
+          <el-empty :image-size="72" description="选择服务项目后将在这里生成消费明细" />
+        </div>
+
+        <div v-else class="receipt-items">
+          <el-table :data="cartItems" style="width: 100%" class="receipt-table">
             <el-table-column label="项目名称" min-width="220">
               <template #default="{ row }">
                 <div class="service-item">
@@ -176,22 +236,22 @@
               <template #default="{ row }">{{ formatCurrency(row.standardPrice) }}</template>
             </el-table-column>
           </el-table>
-          <el-divider />
+        </div>
 
-          <div class="summary">
+        <div class="summary">
             <div class="summary-item">
-              <span>应付总额:</span>
+              <span>项目合计</span>
               <span>¥{{ formatAmount(totalAmount) }}</span>
             </div>
             <div class="summary-item" v-if="displayDiscountAmount > 0">
-              <span class="discount-label">总优惠:</span>
+              <span class="discount-label">优惠</span>
               <span class="discount-text">- ¥{{ formatAmount(displayDiscountAmount) }}</span>
             </div>
             <div class="summary-item total">
-              <span>实付金额:</span>
+              <span>应收金额</span>
               <div class="total-price-display">
                 <span class="total-price">¥{{ formatAmount(displayActualPaidAmount) }}</span>
-                <div class="price-adjustment-controls">
+                <div v-if="cartItems.length > 0" class="price-adjustment-controls">
                   <el-button text size="small" type="warning" @click="openPriceAdjustmentDialog" class="adjustment-button">
                     价格调整
                     <el-icon style="margin-left: 4px;"><Edit /></el-icon>
@@ -199,9 +259,9 @@
                 </div>
               </div>
             </div>
-          </div>
+        </div>
 
-          <div v-if="form.paymentMethod === PAYMENT_METHODS.MEMBER_CARD && paymentPlan.paymentDetails.length > 0" class="payment-plan-preview">
+        <div v-if="form.paymentMethod === PAYMENT_METHODS.MEMBER_CARD && paymentPlan.paymentDetails.length > 0" class="payment-plan-preview">
             <el-divider content-position="left">支付方案预览</el-divider>
             <div v-for="(detail, index) in paymentPlan.paymentDetails" :key="index" class="plan-card-detail">
               <div class="plan-card-header">
@@ -216,21 +276,20 @@
                 <span class="deduction">实扣: {{ formatCurrency(detail.deduction) }}</span>
               </div>
             </div>
-          </div>
-
-          <el-button
-            type="primary"
-            size="large"
-            style="width: 100%; margin-top: 20px;"
-            @click="handleCheckout"
-            :loading="isSubmitting"
-            :disabled="!isCheckoutReady"
-          >
-            结 算
-          </el-button>
         </div>
-      </el-col>
-    </el-row>
+
+        <el-button
+          type="primary"
+          size="large"
+          class="checkout-button"
+          @click="handleCheckout"
+          :loading="isSubmitting"
+          :disabled="!isCheckoutReady"
+        >
+          确认收款
+        </el-button>
+      </aside>
+    </div>
 
     <!-- 当日结算记录 -->
     <TodayTransactionList
@@ -547,6 +606,11 @@ const canShowVoidButton = computed(() => {
 });
 
 const sortedServiceList = computed(() => [...serviceList.value].sort((a, b) => a.sortOrder - b.sortOrder));
+
+const todayRevenue = computed(() => todayTransactions.value.reduce((sum, transaction) => {
+  if (transaction.status === 'VOIDED') return sum;
+  return sum.plus(new Decimal(transaction.actualPaidAmount || 0));
+}, new Decimal(0)));
 
 // O(1) 查找替代 Array.find — 多个 computed 都依赖此查找
 const serviceMap = computed(() => new Map(serviceList.value.map(s => [s.id, s])));
@@ -1160,5 +1224,246 @@ const handleCheckout = async () => {
     font-size: 12px !important;
     white-space: nowrap !important;
   }
+}
+
+/* C 版：柔雾米杏四步式收银台 */
+.checkout-page {
+  --checkout-ink: #34312d;
+  --checkout-muted: #81796f;
+  --checkout-line: #e7dfd4;
+  --checkout-paper: #fffdf9;
+  --checkout-oat: #f3eee6;
+  --checkout-bronze: #9a7448;
+  --checkout-bronze-dark: #795632;
+  gap: 22px;
+  color: var(--checkout-ink);
+}
+
+.checkout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.title-group { display: flex; align-items: stretch; gap: 16px; }
+.title-mark {
+  width: 4px;
+  min-height: 62px;
+  border-radius: 999px;
+  background: var(--checkout-bronze);
+  box-shadow: 0 8px 22px rgba(154, 116, 72, .24);
+}
+.page-eyebrow {
+  margin: 0 0 5px;
+  color: var(--checkout-bronze);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .16em;
+}
+.checkout-page .page-title {
+  margin: 0;
+  color: var(--checkout-ink);
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1;
+  letter-spacing: .05em;
+}
+.daily-metrics { display: flex; gap: 14px; }
+.metric-card {
+  min-width: 178px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 20px;
+  border: 1px solid var(--checkout-line);
+  border-radius: 14px;
+  background: rgba(255, 253, 249, .9);
+  box-shadow: 0 10px 28px rgba(75, 61, 45, .06);
+}
+.metric-label { color: var(--checkout-muted); font-size: 13px; }
+.metric-card strong { color: var(--checkout-bronze-dark); font-size: 21px; font-variant-numeric: tabular-nums; }
+
+.checkout-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.68fr) minmax(340px, .82fr);
+  gap: 22px;
+  align-items: start;
+}
+.checkout-flow,
+.receipt-panel {
+  border: 1px solid var(--checkout-line);
+  border-radius: 18px;
+  background: rgba(255, 253, 249, .96);
+  box-shadow: 0 14px 36px rgba(69, 56, 42, .07);
+}
+.checkout-flow { overflow: hidden; }
+.checkout-form { padding: 0 28px; }
+.flow-step {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 22px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--checkout-line);
+}
+.flow-step-last { border-bottom: 0; }
+.step-index {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--checkout-bronze-dark);
+  background: #f1e9de;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 17px;
+  font-weight: 700;
+}
+.step-content { min-width: 0; }
+.step-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.step-heading h3 { margin: 0; color: var(--checkout-ink); font-size: 19px; letter-spacing: .04em; }
+.step-heading span { color: #a0978c; font-size: 12px; }
+.checkout-form :deep(.el-form-item) { margin-bottom: 0; }
+.checkout-form :deep(.el-form-item__label) {
+  height: auto;
+  padding-bottom: 7px;
+  color: #6e675f;
+  font-size: 12px;
+  line-height: 1.2;
+}
+.checkout-form :deep(.el-input__wrapper),
+.checkout-form :deep(.el-select__wrapper),
+.checkout-form :deep(.el-textarea__inner) {
+  min-height: 43px;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 0 0 1px #ddd4c8 inset;
+}
+.checkout-form :deep(.el-input__wrapper.is-focus),
+.checkout-form :deep(.el-select__wrapper.is-focused) {
+  box-shadow: 0 0 0 1px var(--checkout-bronze) inset, 0 0 0 3px rgba(154, 116, 72, .08);
+}
+.service-staff-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 18px; }
+.confirm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.payment-method-field :deep(.el-form-item__content) { display: block; }
+.payment-methods { display: grid !important; grid-template-columns: repeat(6, minmax(0, 1fr)); width: 100%; }
+.payment-methods :deep(.el-radio-button) { min-width: 0; }
+.payment-methods :deep(.el-radio-button__inner) {
+  width: 100%;
+  padding: 13px 8px;
+  color: #5f5952;
+  border-color: #ddd4c8;
+  background: #fff;
+  box-shadow: none;
+}
+.payment-methods :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  color: #fff;
+  border-color: var(--checkout-bronze);
+  background: var(--checkout-bronze);
+  box-shadow: -1px 0 0 0 var(--checkout-bronze);
+}
+.member-card-options {
+  display: grid;
+  grid-template-columns: .8fr 1.2fr;
+  gap: 18px;
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--checkout-oat);
+}
+.service-tag-qty { background: var(--checkout-bronze); }
+
+.receipt-panel {
+  position: sticky;
+  top: 88px;
+  padding: 18px;
+}
+.receipt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 18px;
+  border-radius: 13px 13px 5px 5px;
+  color: #fff;
+  background: #a88a70;
+}
+.receipt-header p { margin: 0 0 4px; color: rgba(255,255,255,.72); font-size: 10px; letter-spacing: .14em; }
+.receipt-header h3 { margin: 0; font-size: 22px; letter-spacing: .05em; }
+.receipt-status {
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: #5d634d;
+  background: #edf0e7;
+  font-size: 12px;
+  font-weight: 600;
+}
+.receipt-member {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px 4px 13px;
+  border-bottom: 1px solid var(--checkout-line);
+  font-size: 13px;
+}
+.receipt-member span { color: var(--checkout-muted); }
+.receipt-member strong { color: var(--checkout-ink); }
+.empty-cart { min-height: 190px; display: grid; place-items: center; }
+.empty-cart :deep(.el-empty__description p) { max-width: 220px; color: #9b9287; font-size: 12px; line-height: 1.6; }
+.receipt-items { margin-top: 12px; }
+.receipt-table :deep(th.el-table__cell) { background: #f4efe8 !important; color: #655e56; font-size: 12px; }
+.receipt-table :deep(.el-table__cell) { padding: 9px 0; border-bottom-color: #eee7dd; }
+.receipt-table::before { display: none; }
+.summary {
+  gap: 11px;
+  padding: 18px 4px 0;
+  border-top: 1px solid var(--checkout-line);
+  font-size: 14px;
+}
+.summary-item { color: #5d5750; }
+.summary-item.total {
+  align-items: center;
+  margin-top: 4px;
+  padding: 15px 12px;
+  border-radius: 10px;
+  background: #f6f1ea;
+}
+.total-price { color: var(--checkout-bronze-dark); font-size: 29px; letter-spacing: .02em; }
+.discount-text { color: var(--checkout-bronze); }
+.adjustment-button { color: var(--checkout-bronze-dark) !important; }
+.checkout-button {
+  width: 100%;
+  height: 52px;
+  margin-top: 18px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--checkout-bronze);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  box-shadow: 0 10px 22px rgba(121, 86, 50, .18);
+}
+.checkout-button:hover { background: var(--checkout-bronze-dark); }
+.checkout-button.is-disabled { background: #d8c8b6; }
+.plan-card-detail { border-color: var(--checkout-line); border-radius: 9px; background: #fbf8f3; }
+
+@media (max-width: 1180px) {
+  .checkout-workspace { grid-template-columns: 1fr; }
+  .receipt-panel { position: static; }
+}
+@media (max-width: 768px) {
+  .checkout-header { align-items: flex-start; flex-direction: column; }
+  .daily-metrics { width: 100%; }
+  .metric-card { min-width: 0; flex: 1; padding: 13px; }
+  .metric-card strong { font-size: 17px; }
+  .checkout-form { padding: 0 16px; }
+  .flow-step { grid-template-columns: 40px minmax(0, 1fr); gap: 12px; padding: 20px 0; }
+  .step-index { width: 38px; height: 38px; font-size: 14px; }
+  .step-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .service-staff-grid, .confirm-grid, .member-card-options { grid-template-columns: 1fr; }
+  .payment-methods { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 8px; }
 }
 </style>
