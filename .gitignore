@@ -60,6 +60,7 @@ portable/demo-data.sql.gz
 
 # 本地演示与过程文档（非部署所需，按经营者口径从版本库排除）
 M77-*.md
+!docs/M77-ROLLBACK.md
 FEISHU-*.md
 SMS-SETUP.md
 开始使用.txt
