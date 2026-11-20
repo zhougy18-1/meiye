@@ -84,6 +84,7 @@
           <el-checkbox v-model="acknowledged">我已逐项核实以上警告，确认按预览结果建立期初数据</el-checkbox>
         </div>
         <div class="actions">
+          <el-button v-if="preview.reportBase64" @click="downloadPreviewReport">下载异常报告</el-button>
           <el-button type="primary" :disabled="!preview.canCommit || (warningCodes.length > 0 && !acknowledged)" :loading="committing" @click="commit">确认正式导入</el-button>
           <span class="field-help">正式提交后将创建会员、可用余额和可核销疗程；不会创建当日收款。</span>
         </div>
@@ -132,6 +133,7 @@ async function runPreview() {
     preview.value = data; acknowledged.value = false;
     projectNames.value = [...new Set((data.snapshot?.courses || []).map(row => row.project))];
     if (data.issues.some(issue => issue.code === 'PACKAGE_PLAN_MAPPING_REQUIRED')) ElMessage.warning('请完成护理项目映射后再次解析预览');
+    if (data.persisted === false) ElMessage.info('该预览存在阻断错误，系统未永久保存会员资料；可下载异常报告后修正文件');
   } finally { previewing.value = false; }
 }
 async function commit() {
@@ -147,10 +149,11 @@ async function rollback(row) {
 async function loadBatches() { loadingBatches.value = true; try { batches.value = await getMigrationBatches(); } finally { loadingBatches.value = false; } }
 async function downloadTemplate() { const blob = await downloadMigrationTemplate(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = '青司系统_M77会员资料导入模板.xlsx'; a.click(); URL.revokeObjectURL(url); }
 async function downloadReport(row) { const blob = await downloadMigrationReport(row.id); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `M77会员迁移对账报告-${row.id}.xlsx`; a.click(); URL.revokeObjectURL(url); }
+function downloadPreviewReport() { const base64 = preview.value.reportBase64; const chunks = []; const chunkSize = 512 * 1024; for (let offset = 0; offset < base64.length; offset += chunkSize) { const binary = atob(base64.slice(offset, offset + chunkSize)); chunks.push(Uint8Array.from(binary, char => char.charCodeAt(0))); } const blob = new Blob(chunks, { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'M77会员迁移异常报告.xlsx'; a.style.display = 'none'; document.body.appendChild(a); a.click(); a.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 1000); preview.value.reportBase64 = null; }
 const formatDate = value => value ? new Intl.DateTimeFormat('zh-CN', { dateStyle:'medium', timeStyle:'short' }).format(new Date(value)) : '-';
 const formatDiscount = value => `${Number((Number(value) * 10).toFixed(2))}折`;
-const statusText = value => ({ PREVIEW:'待提交', COMMITTING:'处理中', COMMITTED:'已导入', ROLLING_BACK:'回滚中', ROLLED_BACK:'已回滚' }[value] || value);
-const statusType = value => ({ PREVIEW:'warning', COMMITTED:'success', ROLLED_BACK:'info' }[value] || 'warning');
+const statusText = value => ({ PREVIEW:'待提交', COMMITTING:'处理中', COMMITTED:'已导入', DUPLICATE:'重复文件', ROLLING_BACK:'回滚中', ROLLED_BACK:'已回滚' }[value] || value);
+const statusType = value => ({ PREVIEW:'warning', COMMITTED:'success', DUPLICATE:'info', ROLLED_BACK:'info' }[value] || 'warning');
 </script>
 
 <style scoped>

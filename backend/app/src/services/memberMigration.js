@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import Decimal from 'decimal.js';
 import { generateUniqueId } from '../utils/id.js';
-import { parseWorkbook } from './migrationExcel.js';
+import { createMigrationReportWorkbook, parseWorkbook } from './migrationExcel.js';
 
 export class MemberMigrationError extends Error {
   constructor(message, statusCode = 400, details = null) {
@@ -92,12 +92,23 @@ export function createMemberMigrationService(db) {
       const mappings = { cardTypeId: input.cardTypeId || null, cardTypeMappings: input.cardTypeMappings || {}, projectMappings: input.projectMappings || {} };
       const issues = [...parsed.issues, ...mappingIssues(parsed, input, existing)];
       const summary = totals(parsed);
+      const fileName = String(input.fileName).slice(0, 255);
+      const fileHash = crypto.createHash('sha256').update(file).digest('hex');
+      const snapshot = jsonPlain({ members: parsed.members, balances: parsed.balances, courses: parsed.courses });
+      if (issues.some(issue => issue.severity === 'error')) {
+        const rejected = {
+          id: null, fileName, fileHash, cutoffAt, status: 'INVALID', snapshot, mappings,
+          issues: jsonPlain(issues), previewSummary: summary, acknowledgements: [],
+          createdBy: actor.id, createdByName: actor.username,
+        };
+        const report = await createMigrationReportWorkbook({ ...rejected, fileName: '未通过校验的导入文件.xlsx', createdByName: '当前管理员' });
+        return { ...rejected, summary, canCommit: false, reportBase64: report.toString('base64'), persisted: false };
+      }
       const batch = await db.memberMigrationBatch.create({ data: {
-        fileName: String(input.fileName).slice(0, 255), fileHash: crypto.createHash('sha256').update(file).digest('hex'), cutoffAt,
-        snapshot: jsonPlain({ members: parsed.members, balances: parsed.balances, courses: parsed.courses }), mappings,
+        fileName, fileHash, cutoffAt, snapshot, mappings,
         issues: jsonPlain(issues), previewSummary: summary, createdBy: actor.id, createdByName: actor.username,
       } });
-      return { ...batch, snapshot: batch.snapshot, issues, summary, canCommit: !issues.some(issue => issue.severity === 'error') };
+      return { ...batch, snapshot: batch.snapshot, issues, summary, canCommit: true, persisted: true };
     },
 
     async list() {
@@ -113,7 +124,7 @@ export function createMemberMigrationService(db) {
 
     async commit(id, acknowledgements, actor) {
       const requestedAcks = new Set(acknowledgements || []);
-      return db.$transaction(async tx => {
+      const outcome = await db.$transaction(async tx => {
         const batch = await tx.memberMigrationBatch.findUnique({ where: { id } });
         if (!batch) throw new MemberMigrationError('导入批次不存在', 404);
         if (batch.status === 'COMMITTED') return batch;
@@ -124,7 +135,10 @@ export function createMemberMigrationService(db) {
         const missing = warningCodes.filter(code => !requestedAcks.has(code));
         if (missing.length) throw new MemberMigrationError('请先确认全部警告再导入', 409, { missingAcknowledgements: missing });
         const duplicate = await tx.memberMigrationBatch.findFirst({ where: { fileHash: batch.fileHash, status: 'COMMITTED', id: { not: id } } });
-        if (duplicate) throw new MemberMigrationError('相同内容的文件已经成功导入', 409);
+        if (duplicate) {
+          await tx.memberMigrationBatch.update({ where: { id }, data: { status: 'DUPLICATE', resultSummary: { duplicateOf: duplicate.id } } });
+          return { duplicateRejected: true, duplicateOf: duplicate.id };
+        }
         const claimed = await tx.memberMigrationBatch.updateMany({ where: { id, status: 'PREVIEW' }, data: { status: 'COMMITTING', acknowledgements: warningCodes } });
         if (claimed.count !== 1) throw new MemberMigrationError('批次正在由其他请求处理', 409);
 
@@ -215,6 +229,8 @@ export function createMemberMigrationService(db) {
         if (!resultSummary.reconciled) throw new MemberMigrationError('数据库实存值与预览汇总不一致，已自动取消本次导入', 409, reconciliation);
         return tx.memberMigrationBatch.update({ where: { id }, data: { status: 'COMMITTED', committedAt: new Date(), resultSummary } });
       }, { isolationLevel: 'Serializable', timeout: 30000 });
+      if (outcome?.duplicateRejected) throw new MemberMigrationError('相同内容的文件已经成功导入', 409, { duplicateOf: outcome.duplicateOf });
+      return outcome;
     },
 
     async rollback(id, reason, actor) {

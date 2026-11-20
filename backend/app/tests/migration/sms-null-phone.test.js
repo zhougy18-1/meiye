@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { assertDedicatedMigrationTestDatabase } from './_testDbGuard.js';
 
 process.env.NODE_ENV = 'test';
+assertDedicatedMigrationTestDatabase();
 const { default: prisma } = await import('../../src/db/prisma.js');
 const { queueTransactionSms } = await import('../../src/services/sms.js');
 
