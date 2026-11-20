@@ -28,6 +28,7 @@ import voidLogRoutes from './routes/voidLogs.js';
 import bookingRoutes from './routes/booking.js';
 import packagesRoutes from './routes/packages.js';
 import smsNotificationRoutes from './routes/smsNotifications.js';
+import memberMigrationRoutes from './routes/memberMigrations.js';
 import tokenCleaner from './utils/tokenCleaner.js';
 import smsDispatcher from './utils/smsDispatcher.js';
 import prisma from './db/prisma.js';
@@ -279,6 +280,7 @@ fastify.register(packagesRoutes, { prefix: '/api/packages' });
 
 // 短信发送台账和失败重试，仅店长/管理员可查看。
 fastify.register(smsNotificationRoutes, { prefix: '/api/sms-notifications' });
+fastify.register(memberMigrationRoutes, { prefix: '/api/member-migrations' });
 
 // 启动服务
 const start = async () => {

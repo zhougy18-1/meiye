@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "node --import tsx --test --test-concurrency=1 tests/p0-gap/*.test.js",
+    "test:migration": "node --env-file-if-exists=.env --import tsx --test --test-concurrency=1 tests/migration/*.test.js",
     "test:m1": "node --test tests/m1/*.test.js",
     "dev": "prisma generate && prisma migrate deploy && tsx init-admin.js && tsx --watch src/server.js",
     "build": "prisma generate",
@@ -29,6 +30,7 @@
     "bcryptjs": "^3.0.3",
     "decimal.js": "^10.6.0",
     "dotenv": "^17.4.2",
+    "exceljs": "4.4.0",
     "fastify": "^5.12.7",
     "jsonwebtoken": "^9.0.3",
     "nanoid": "^5.1.16",

@@ -75,7 +75,7 @@ export async function queueTransactionSms(db, transaction) {
   const data = {
     transactionId: transaction.id,
     memberId: member.id,
-    phoneLast4: member.phone.slice(-4).padStart(4, '*'),
+    phoneLast4: (member.phone || '').slice(-4).padStart(4, '*'),
     status: validPhone ? 'PENDING' : 'SKIPPED',
     provider: providerName(),
     amount,

@@ -22,7 +22,8 @@
       <el-card shadow="never"><span>已售套餐</span><strong>{{ summary.holdingCount || 0 }}</strong></el-card>
       <el-card shadow="never"><span>套餐实收</span><strong>¥{{ summary.paidAmount || '0.00' }}</strong></el-card>
       <el-card shadow="never"><span>已核销次数</span><strong>{{ summary.redeemedUses || 0 }}</strong></el-card>
-      <el-card shadow="never"><span>剩余次数</span><strong>{{ summary.remainingUses || 0 }}</strong></el-card>
+      <el-card shadow="never"><span>销售套餐剩余</span><strong>{{ summary.remainingUses || 0 }}</strong></el-card>
+      <el-card v-if="summary.openingHoldingCount" shadow="never"><span>期初权益</span><strong>{{ summary.openingHoldingCount }} 份 / {{ summary.openingRemainingUses }} 次</strong></el-card>
     </div>
 
     <div class="toolbar">
@@ -93,10 +94,10 @@
       <el-table-column label="顾客" min-width="130">
         <template #default="scope">
           <strong>{{ scope.row.member.name }}</strong>
-          <div class="muted">{{ scope.row.member.phone }}</div>
+          <div class="muted">{{ scope.row.member.phone || '手机号未填写' }}</div>
         </template>
       </el-table-column>
-      <el-table-column prop="planName" label="套餐" min-width="150" />
+      <el-table-column label="套餐" min-width="170"><template #default="scope">{{ scope.row.planName }} <el-tag v-if="scope.row.source === 'OPENING'" size="small" type="warning">期初权益</el-tag></template></el-table-column>
       <el-table-column label="项目" min-width="120">
         <template #default="scope">{{ scope.row.plan?.service?.name || '-' }}</template>
       </el-table-column>
@@ -158,7 +159,7 @@
       <el-form :model="purchaseForm" label-width="90px">
         <el-form-item label="顾客" required>
           <el-select v-model="purchaseForm.memberId" filterable style="width:100%" placeholder="按姓名或手机号搜索">
-            <el-option v-for="item in members" :key="item.id" :label="`${item.name} · ${item.phone}`" :value="item.id" />
+            <el-option v-for="item in members" :key="item.id" :label="`${item.name} · ${item.phone || '手机号未填写'}`" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="套餐" required>

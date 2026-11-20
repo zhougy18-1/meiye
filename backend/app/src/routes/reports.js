@@ -25,11 +25,11 @@ const PACKAGE_TIME = P0_GAP_POLICIES.REPORT_PACKAGE_TIME;
 async function queryPackageMetricRows(start, end) {
   const [holdings, refunds, usages] = await Promise.all([
     prisma.packageHolding.findMany({
-      where: { [PACKAGE_TIME.packageRevenueField]: { gte: start, lte: end } },
+      where: { [PACKAGE_TIME.packageRevenueField]: { gte: start, lte: end }, source: 'SALE' },
       select: { paidAmount: true, [PACKAGE_TIME.packageRevenueField]: true },
     }),
     prisma.packageRefundAudit.findMany({
-      where: { [PACKAGE_TIME.packageRefundField]: { gte: start, lte: end } },
+      where: { [PACKAGE_TIME.packageRefundField]: { gte: start, lte: end }, holding: { source: 'SALE' } },
       select: { refundAmount: true, [PACKAGE_TIME.packageRefundField]: true },
     }),
     prisma.packageUsage.findMany({

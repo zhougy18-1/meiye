@@ -246,12 +246,14 @@ export function createPackageService(db) {
       });
     },
     async summary() {
-      const [totals, redeemedUses] = await Promise.all([
-        db.packageHolding.aggregate({ _count: { id: true }, _sum: { paidAmount: true, remainingUses: true } }),
+      const [totals, opening, redeemedUses] = await Promise.all([
+        db.packageHolding.aggregate({ where: { source: 'SALE' }, _count: { id: true }, _sum: { paidAmount: true, remainingUses: true } }),
+        db.packageHolding.aggregate({ where: { source: 'OPENING' }, _count: { id: true }, _sum: { remainingUses: true } }),
         db.packageUsage.count({ where: { reversedAt: null } }),
       ]);
       return { holdingCount: totals._count.id, paidAmount: totals._sum.paidAmount?.toFixed(2) || '0.00',
         remainingUses: totals._sum.remainingUses || 0, redeemedUses,
+        openingHoldingCount: opening._count.id, openingRemainingUses: opening._sum.remainingUses || 0,
         accountingNote: '套餐收入单独统计，未合并原收银报表；扣次不重复计收款。退款/作废在套餐台账内留痕，并在报表以「套餐退款」分列。' };
     },
   };

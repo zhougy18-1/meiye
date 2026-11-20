@@ -31,6 +31,9 @@
       <el-table :data="members" v-loading="loading" style="width: 100%" stripe size="large">
         <!-- 1. 姓名 -->
         <el-table-column prop="name" label="姓名" width="100" />
+        <el-table-column prop="classification" label="会员分类" width="110">
+          <template #default="{ row }">{{ row.classification || '-' }}</template>
+        </el-table-column>
         
         <!-- 2. 性别（仅在已知男/女时显示 EP tag，未知不占视觉） -->
         <el-table-column label="性别" width="70" align="center">

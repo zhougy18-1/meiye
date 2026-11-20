@@ -23,7 +23,7 @@
             >
               <template #default="{ item }">
                 <div class="suggestion-item">
-                  <span class="suggestion-info">{{ item.name }} ({{ item.phone }})</span>
+                  <span class="suggestion-info">{{ item.name }} ({{ item.phone || '手机号未填写' }})</span>
                   <div class="suggestion-tags">
                     <el-tag :type="memberStatusTagType(item.status)" size="small" effect="plain">
                       {{ memberStatusText(item.status) }}
@@ -37,7 +37,7 @@
               </template>
             </el-autocomplete>
             <el-tag v-if="form.memberId" type="success" style="margin-top: 10px;">
-              当前会员: {{ selectedMember.name }} ({{ selectedMember.phone }})
+              当前会员: {{ selectedMember.name }} ({{ selectedMember.phone || '手机号未填写' }})
             </el-tag>
           </el-form-item>
 
@@ -526,7 +526,7 @@ const fetchTodayTransactions = async (reset = true) => {
 const queryMembersAsync = async (queryString, cb) => {
   if (!queryString) return cb([]);
   const { data } = await getMembers({ search: queryString, limit: 20, includeCards: true });
-  cb(data.map(m => ({ ...m, value: `${m.name} (${m.phone})` })));
+  cb(data.map(m => ({ ...m, value: `${m.name} (${m.phone || '手机号未填写'})` })));
 };
 
 const loadMoreTransactions = async () => {

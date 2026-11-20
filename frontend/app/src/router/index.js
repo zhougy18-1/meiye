@@ -54,6 +54,12 @@ const routes = [
     meta: { roles: ['ADMIN'] }
   },
   {
+    path: '/member-migrations',
+    name: 'member-migrations',
+    component: () => import('../views/MemberMigrationView.vue'),
+    meta: { roles: ['ADMIN'] }
+  },
+  {
     path: '/settings',
     name: 'settings',
     component: () => import('../views/SettingsView.vue'),

@@ -11,7 +11,8 @@
     <div v-else-if="member && !apiError" class="detail-content">
       <el-descriptions :column="2" border>
         <el-descriptions-item label="姓名">{{ member.name }}</el-descriptions-item>
-        <el-descriptions-item label="手机号">{{ member.phone }}</el-descriptions-item>
+        <el-descriptions-item label="会员分类">{{ member.classification || '未分类' }}</el-descriptions-item>
+        <el-descriptions-item label="手机号">{{ member.phone || '未填写' }}</el-descriptions-item>
         <el-descriptions-item label="性别">{{ member.gender === 'MALE' ? '男' : (member.gender === 'FEMALE' ? '女' : '未知') }}</el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="memberStatusTagType(member.status)" size="small">{{ memberStatusText(member.status) }}</el-tag>
@@ -30,6 +31,9 @@
           <span v-else>暂无消费记录</span>
         </el-descriptions-item>
         <el-descriptions-item label="备注" :span="2">{{ member.notes || '无' }}</el-descriptions-item>
+        <el-descriptions-item v-if="member.importBatchId" label="历史累计充值">{{ member.historicalRecharge == null ? '未知' : formatCurrency(member.historicalRecharge) }}</el-descriptions-item>
+        <el-descriptions-item v-if="member.importBatchId" label="历史累计消费">{{ member.historicalConsumption == null ? '未知' : formatCurrency(member.historicalConsumption) }}</el-descriptions-item>
+        <el-descriptions-item v-if="member.importBatchId" label="期初储值说明" :span="2">{{ member.openingBalanceNotes || '无' }}</el-descriptions-item>
       </el-descriptions>
 
       <el-divider>名下会员卡</el-divider>

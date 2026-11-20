@@ -45,6 +45,7 @@ export default async function (fastify, opts) {
           phone,
           gender,
           birthday: birthday ? new Date(birthday) : null,
+          registrationDate: new Date(),
           smsNotificationEnabled,
           notes,
         },

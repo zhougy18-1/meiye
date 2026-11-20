@@ -1,12 +1,102 @@
-/* 品牌主题：把 Element Plus 主色统一为品牌色 teal #25686c。
-   light/dark 衍生色按 Element Plus 与白/黑混合的算法预先计算，
-   覆盖后按钮、链接、标签等组件自动使用品牌色，全站不再出现默认蓝与品牌色并存。 */
+/* M.77 Luxury Minimalist：香槟金负责品牌与选中态，深暖灰承担高频主操作。 */
 :root {
-  --el-color-primary: #25686c;
-  --el-color-primary-light-3: #669598;
-  --el-color-primary-light-5: #92b4b6;
-  --el-color-primary-light-7: #bed2d3;
-  --el-color-primary-light-8: #d3e1e2;
-  --el-color-primary-light-9: #e9f0f0;
-  --el-color-primary-dark-2: #1e5356;
+  --brand-primary: #d6b35f;
+  --brand-emphasis: #957333;
+  --brand-ink: #302d28;
+  --brand-muted: #827c73;
+  --brand-canvas: #faf9f6;
+  --brand-surface: #ffffff;
+  --brand-border: #eae6df;
+  --brand-shadow: 0 14px 36px rgba(48, 45, 40, 0.08);
+
+  --el-color-primary: #957333;
+  --el-color-primary-light-3: #b09c70;
+  --el-color-primary-light-5: #cab995;
+  --el-color-primary-light-7: #ded3bc;
+  --el-color-primary-light-8: #e9e1d1;
+  --el-color-primary-light-9: #f5f1e8;
+  --el-color-primary-dark-2: #775c29;
+  --el-bg-color-page: var(--brand-canvas);
+  --el-bg-color: var(--brand-surface);
+  --el-fill-color-blank: var(--brand-surface);
+  --el-fill-color-light: #f7f4ee;
+  --el-fill-color-lighter: #fbfaf7;
+  --el-border-color: var(--brand-border);
+  --el-border-color-light: #eeeae4;
+  --el-border-color-lighter: #f3f0eb;
+  --el-text-color-primary: var(--brand-ink);
+  --el-text-color-regular: #5f5a53;
+  --el-text-color-secondary: var(--brand-muted);
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 6px;
+  --el-box-shadow-light: var(--brand-shadow);
+  color-scheme: light;
+}
+
+body {
+  color: var(--brand-ink);
+  background: var(--brand-canvas);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button, input, textarea, select { font: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--brand-emphasis);
+  outline-offset: 2px;
+}
+
+.el-button--primary {
+  --el-button-bg-color: var(--brand-ink);
+  --el-button-border-color: var(--brand-ink);
+  --el-button-hover-bg-color: #49443d;
+  --el-button-hover-border-color: #49443d;
+  --el-button-active-bg-color: #201e1a;
+  --el-button-active-border-color: #201e1a;
+  --el-button-disabled-bg-color: #a9a49c;
+  --el-button-disabled-border-color: #a9a49c;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner,
+.el-date-editor.el-input__wrapper {
+  box-shadow: 0 0 0 1px var(--brand-border) inset;
+  transition: box-shadow .18s ease, background-color .18s ease;
+}
+
+.el-input__wrapper:hover,
+.el-select__wrapper:hover,
+.el-textarea__inner:hover { box-shadow: 0 0 0 1px #cfc6b8 inset; }
+
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused,
+.el-textarea__inner:focus { box-shadow: 0 0 0 1px var(--brand-emphasis) inset; }
+
+.el-card,
+.el-dialog,
+.el-drawer { border-color: var(--brand-border); }
+
+.el-table {
+  --el-table-header-bg-color: #f7f4ee;
+  --el-table-row-hover-bg-color: #fbf8f1;
+  --el-table-border-color: var(--brand-border);
+  --el-table-header-text-color: #514c45;
+}
+
+.el-tabs__item.is-active,
+.el-tabs__item:hover,
+.el-link.el-link--primary { color: var(--brand-emphasis); }
+.el-tabs__active-bar { background-color: var(--brand-primary); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
 }

@@ -170,13 +170,13 @@ const queryMembersAsync = async (queryString, cb) => {
     cb([]);
     return;
   }
-  cb(data.map(m => ({ ...m, value: `${m.name} (${m.phone})` })));
+  cb(data.map(m => ({ ...m, value: `${m.name} (${m.phone || '手机号未填写'})` })));
 };
 
 const handleMemberSelect = (item) => {
   form.memberId = item.id;
   form.customerName = item.name;
-  form.customerPhone = item.phone;
+  form.customerPhone = item.phone || '';
   selectedMember.value = item;
 };
 

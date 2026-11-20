@@ -5,9 +5,12 @@
     <el-header class="app-header">
       <div class="header-content">
         <!-- Logo容器 -->
-        <div class="logo-container">
-          <img :src="appConfig.logo" alt="Logo" class="logo-img" />
-          <span class="logo-text">{{ appConfig.fullTitle }}</span>
+        <div class="logo-container" :aria-label="appConfig.brandName">
+          <span class="brand-image-crop" role="img" :aria-label="`${appConfig.brandName} 原始品牌标识`"></span>
+          <span class="logo-copy">
+            <strong>{{ appConfig.brandName }}</strong>
+            <small>{{ appConfig.englishName }} · {{ appConfig.systemName }}</small>
+          </span>
         </div>
         
         <!-- PC端导航 -->
@@ -158,7 +161,7 @@ import { useUserStore } from '@/stores/user';
 import { useSystemStore } from '@/stores/system';
 import { useUIStore } from '@/stores/ui';
 import { useRoute } from 'vue-router';
-import { User, UserFilled, ArrowDown, Money, Calendar, PieChart, Operation, Tickets, ChatDotRound } from '@element-plus/icons-vue';
+import { User, UserFilled, ArrowDown, Money, Calendar, PieChart, Operation, Tickets, ChatDotRound, UploadFilled } from '@element-plus/icons-vue';
 import appConfig from '@/config/app.js';
 
 const userStore = useUserStore();
@@ -167,6 +170,7 @@ const uiStore = useUIStore();
 const route = useRoute();
 // 演示文字只在显式注入时出现；正式构建不传该变量，因此生产产物不会包含演示提示。
 const demoMessage = import.meta.env.VITE_DEMO_MESSAGE || '';
+const isDemoMode = computed(() => Boolean(demoMessage));
 
 const showBirthdayBadge = ref(false);
 const isPublicPage = computed(() => ['login', 'booking'].includes(route.name));
@@ -205,6 +209,7 @@ const menuItems = shallowRef([
   { index: '/packages', title: '套餐', icon: Tickets, roles: ['ADMIN'] },
   { index: '/sms-notifications', title: '短信', icon: ChatDotRound, roles: ['ADMIN'] },
   { index: '/reports', title: '报表', icon: PieChart, roles: ['ADMIN'] },
+  { index: '/member-migrations', title: '迁移', icon: UploadFilled, roles: ['ADMIN'] },
   { index: '/settings', title: '设置', icon: Operation, roles: ['ADMIN'] },
 ]);
 
@@ -276,8 +281,8 @@ watch(() => uiStore.fontSize, (newSize) => {
   font-weight: 600;
 }
 .app-header {
-  background-color: #fafafa;
-  height: 60px;
+  background: rgba(255, 255, 255, .96);
+  height: 68px;
   width: 100%;
   padding: 0;
   flex-shrink: 0;
@@ -285,7 +290,8 @@ watch(() => uiStore.fontSize, (newSize) => {
   top: v-bind("isDemoMode ? '34px' : '0px'");
   left: 0;
   z-index: 1000;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid var(--brand-border);
+  backdrop-filter: blur(12px);
 }
 .header-content {
   max-width: 1400px;
@@ -296,9 +302,32 @@ watch(() => uiStore.fontSize, (newSize) => {
   align-items: center;
 }
 /* 空间不够时先压缩 logo，否则右侧用户区会被顶出窗口外点不到 */
-.logo-container { display: flex; align-items: center; gap: 12px; min-width: 0; overflow: hidden; }
-.logo-img { height: 40px; }
-.logo-text { font-size: 22px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--el-color-primary); }
+.logo-container { display: flex; align-items: center; gap: 12px; min-width: 290px; overflow: hidden; }
+.brand-image-crop {
+  width: 138px;
+  height: 30px;
+  flex: 0 0 138px;
+  background-image: url('/images/m77-brand-reference.png');
+  background-repeat: no-repeat;
+  background-size: 245px auto;
+  background-position: -18px -23px;
+  mix-blend-mode: multiply;
+}
+.logo-copy { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.logo-copy strong {
+  color: var(--brand-ink);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+.logo-copy small {
+  color: var(--brand-emphasis);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 9px;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
 
 .header-right {
   display: flex;
@@ -313,7 +342,7 @@ watch(() => uiStore.fontSize, (newSize) => {
   align-items: center;
   padding: 0 12px;
   height: 100%;
-  color: #606266;
+  color: #625d56;
   text-decoration: none;
   font-size: 1rem;
   transition: all 0.2s ease;
@@ -326,7 +355,7 @@ watch(() => uiStore.fontSize, (newSize) => {
   margin-right: 6px;
 }
 .nav-item:hover { color: var(--el-color-primary); }
-.nav-item.is-active { color: var(--el-color-primary); border-bottom-color: var(--el-color-primary); font-weight: 600; padding-bottom: 6px; }
+.nav-item.is-active { color: var(--brand-emphasis); border-bottom-color: var(--brand-primary); font-weight: 600; }
 
 .el-dropdown-link {
   cursor: pointer;
@@ -341,12 +370,14 @@ watch(() => uiStore.fontSize, (newSize) => {
 
 .app-main {
   flex-grow: 1;
-  padding-top: v-bind("isDemoMode ? '94px' : '60px'");
-  background-color: #f0f2f5;
+  padding-top: v-bind("isDemoMode ? '102px' : '68px'");
+  background:
+    radial-gradient(circle at 0 0, rgba(214, 179, 95, .07), transparent 26%),
+    var(--brand-canvas);
   overflow-y: auto;
 }
 .main-content-wrapper {
-  padding: 20px;
+  padding: 24px;
 }
 .report-accounting-note { max-width: 1400px; margin: 0 auto 14px; }
 .page-container {
@@ -354,9 +385,10 @@ watch(() => uiStore.fontSize, (newSize) => {
   width: 100%;
   margin: 0 auto;
   background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0,21,41,.08);
-  padding: 20px;
+  border: 1px solid var(--brand-border);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(48, 45, 40, .055);
+  padding: 24px;
 }
 
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
@@ -409,10 +441,12 @@ watch(() => uiStore.fontSize, (newSize) => {
   .header-content {
       justify-content: space-between;
   }
-  .logo-text { display: none; }
+  .logo-copy { display: none; }
+  .logo-container { min-width: auto; }
+  .brand-image-crop { width: 112px; flex-basis: 112px; background-size: 200px auto; background-position: -15px -18px; }
   
   .app-main {
-    padding: v-bind("isDemoMode ? '109px 15px 75px' : '75px 15px 75px'");
+    padding: v-bind("isDemoMode ? '117px 15px 75px' : '83px 15px 75px'");
   }
   .main-content-wrapper { padding: 0; }
   .page-container { padding: 15px; border-radius: 6px;}
@@ -424,10 +458,10 @@ watch(() => uiStore.fontSize, (newSize) => {
       left: 0;
       width: 100%;
       height: 60px;
-      background-color: #fff;
-      box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
+      background-color: rgba(255, 255, 255, .98);
+      box-shadow: 0 -4px 18px rgba(48, 45, 40, .07);
       z-index: 1000;
-      border-top: 1px solid #e4e7ed;
+      border-top: 1px solid var(--brand-border);
       overflow-x: auto;
   }
   .mobile-nav .nav-item {
@@ -449,7 +483,21 @@ watch(() => uiStore.fontSize, (newSize) => {
 <style>
 /* 全局样式 */
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif; }
+html { background: var(--brand-canvas); }
+body { margin: 0; font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif; }
+
+.page-header {
+  border-bottom-color: var(--brand-border) !important;
+}
+.page-title {
+  color: var(--brand-ink) !important;
+  font-weight: 650 !important;
+  letter-spacing: .02em;
+}
+.filter-container,
+.table-container {
+  border-color: var(--brand-border) !important;
+}
 
 #nprogress .bar {
   background: var(--el-color-primary) !important;
