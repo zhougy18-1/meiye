@@ -14,10 +14,10 @@
 
 ```bash
 curl -fsSL \
-  https://raw.githubusercontent.com/zhougy18-1/meiye/m77-store-v1.0.1/scripts/server-deploy-systemd.sh \
+  https://raw.githubusercontent.com/zhougy18-1/meiye/m77-store-v1.0.2/scripts/server-deploy-systemd.sh \
   -o /root/m77-deploy.sh
 chmod 700 /root/m77-deploy.sh
-/root/m77-deploy.sh m77-store-v1.0.1
+/root/m77-deploy.sh m77-store-v1.0.2
 ```
 
 脚本会先在隔离目录下载、安装和构建，确认构建成功后才停止生产服务；随后创建代码、网页和数据库备份，执行数据库迁移并切换到新版本。生产切换后任何步骤失败，脚本会自动恢复部署前状态。

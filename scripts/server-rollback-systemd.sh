@@ -95,7 +95,7 @@ EOF
 systemctl stop "${SERVICE}"
 prepare_database_client
 DB_NAME="$(cat "${DB_NAME_FILE}")"
-mysqldump --defaults-extra-file="${MYSQL_CNF}" --single-transaction --quick --routines --triggers --events "${DB_NAME}" | gzip -1 > "${SAFETY}/database.sql.gz"
+mysqldump --defaults-extra-file="${MYSQL_CNF}" --single-transaction --quick --no-tablespaces --routines --triggers --events "${DB_NAME}" | gzip -1 > "${SAFETY}/database.sql.gz"
 gzip -t "${SAFETY}/database.sql.gz"
 
 mkdir -p "${WORK}/app"

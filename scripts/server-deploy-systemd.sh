@@ -144,7 +144,7 @@ systemctl stop "${SERVICE}"
 SERVICE_STOPPED=1
 prepare_database_client
 DB_NAME="$(cat "${DB_NAME_FILE}")"
-mysqldump --defaults-extra-file="${MYSQL_CNF}" --single-transaction --quick --routines --triggers --events "${DB_NAME}" | gzip -1 > "${BACKUP_DIR}/database.sql.gz"
+mysqldump --defaults-extra-file="${MYSQL_CNF}" --single-transaction --quick --no-tablespaces --routines --triggers --events "${DB_NAME}" | gzip -1 > "${BACKUP_DIR}/database.sql.gz"
 gzip -t "${BACKUP_DIR}/database.sql.gz"
 PRODUCTION_MUTATED=1
 
